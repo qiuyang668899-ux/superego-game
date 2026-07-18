@@ -19,25 +19,19 @@ const priority = ['heart-sutra', 'xunzi', 'diamond-sutra', 'platform-sutra', 'vi
 
 if (!TOKEN) throw new Error('Missing GITHUB_TOKEN or GH_TOKEN for GitHub Models')
 
-function parseJsonArray(content) {
+function parseJsonPayload(content) {
   const cleaned = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const json = cleaned.startsWith('{') && cleaned.endsWith('}')
     ? cleaned
     : cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1)
-  try {
-    const direct = JSON.parse(json)
-    if (Array.isArray(direct)) return direct
-    if (Array.isArray(direct.translations)) return direct.translations
-  } catch {
-    const arrayStart = cleaned.indexOf('[', cleaned.indexOf('"translations"'))
-    const recoverable = arrayStart >= 0 ? cleaned.slice(arrayStart + 1) : ''
-    const recovered = [...recoverable.matchAll(/"((?:\\.|[^"\\])*)"/g)].map((match) => JSON.parse(`"${match[1]}"`))
-    if (recovered.length) return recovered
-  }
-  throw new Error('The model response did not contain a translations array')
+  const direct = JSON.parse(json)
+  if (direct.translations && typeof direct.translations === 'object') return direct.translations
+  throw new Error('The model response did not contain a translations object')
 }
 
 async function translateBatch(paragraphs, retryDepth = 0) {
+  const keys = paragraphs.map((_, index) => `p${index + 1}`)
+  const properties = Object.fromEntries(keys.map((key) => [key, { type: 'string' }]))
   const response = await fetch(ENDPOINT, {
     method: 'POST',
     headers: {
@@ -59,10 +53,10 @@ async function translateBatch(paragraphs, retryDepth = 0) {
             type: 'object',
             properties: {
               translations: {
-                type: 'array',
-                items: { type: 'string' },
-                minItems: paragraphs.length,
-                maxItems: paragraphs.length,
+                type: 'object',
+                properties,
+                required: keys,
+                additionalProperties: false,
               },
             },
             required: ['translations'],
@@ -73,11 +67,14 @@ async function translateBatch(paragraphs, retryDepth = 0) {
       messages: [
         {
           role: 'system',
-          content: '你是《超我》藏经阁的严谨古籍译者。把文言与汉文典籍逐段译成今天普通读者一遍就能懂的现代汉语，不要只做繁简转换，也不要照抄文言句式；长句可以拆成短句。忠实保留原意、人名、概念与宗教专名，不添加原文没有的因果、神迹、评价或劝诫；咒语只说明“音译咒语，保留原音”，不要编造字面意义。输入有几段，输出必须正好有几段。',
+          content: '你是《超我》藏经阁的严谨古籍译者。把文言与汉文典籍逐段译成今天普通读者一遍就能懂的现代汉语，不要只做繁简转换，也不要照抄文言句式；长句可以在同一个译文字符串内拆成短句。忠实保留原意、人名、概念与宗教专名，不添加原文没有的因果、神迹、评价或劝诫；咒语写成“音译咒语，保留原音：……”并保留原咒，不要编造字面意义。每个输入键只对应自己的完整译文，绝不能把上一段的后半部分放进下一个键。',
         },
         {
           role: 'user',
-          content: JSON.stringify({ task: '将以下原典翻译为现代汉语，保持顺序与段数', paragraphs }),
+          content: JSON.stringify({
+            task: '逐键翻译以下原典；输出 translations 对象并原样保留每个键',
+            paragraphs: Object.fromEntries(keys.map((key, index) => [key, paragraphs[index]])),
+          }),
         },
       ],
     }),
@@ -90,16 +87,23 @@ async function translateBatch(paragraphs, retryDepth = 0) {
   const payload = await response.json()
   const content = payload.choices?.[0]?.message?.content
   if (!content) throw new Error('GitHub Models returned an empty translation')
-  const translations = parseJsonArray(content).map((value) => String(value).trim())
-  if (paragraphs.length === 1 && translations.some(Boolean)) {
-    return [translations.filter(Boolean).join('\n\n')]
-  }
-  if (translations.length !== paragraphs.length || translations.some((value) => !value)) {
-    if (retryDepth >= 3) {
-      throw new Error(`Expected ${paragraphs.length} complete translations, received ${translations.filter(Boolean).length}`)
+  const translated = parseJsonPayload(content)
+  const translations = keys.map((key) => String(translated[key] || '').trim())
+  const suspicious = translations.some((value, index) => {
+    const source = paragraphs[index]
+    if (!value) return true
+    if (/揭帝|羯諦|羯帝/.test(source) && !/音译咒语|音譯咒語|保留原音/.test(value)) return true
+    return source.length >= 120 && value.length < Math.max(50, source.length * 0.4)
+  })
+
+  if (suspicious) {
+    if (paragraphs.length === 1) {
+      if (retryDepth >= 3) throw new Error('The model repeatedly returned an incomplete or misaligned translation')
+      console.warn('The model returned a suspicious single-paragraph translation; retrying it in isolation.')
+      return translateBatch(paragraphs, retryDepth + 1)
     }
     const middle = Math.ceil(paragraphs.length / 2)
-    console.warn(`The model merged or omitted a paragraph; retrying ${paragraphs.length} paragraphs as ${middle} + ${paragraphs.length - middle}.`)
+    console.warn(`The model returned an incomplete or misaligned batch; retrying ${paragraphs.length} paragraphs as ${middle} + ${paragraphs.length - middle}.`)
     const first = await translateBatch(paragraphs.slice(0, middle), retryDepth + 1)
     const second = await translateBatch(paragraphs.slice(middle), retryDepth + 1)
     return [...first, ...second]
