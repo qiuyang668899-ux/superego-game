@@ -37,7 +37,7 @@ function parseJsonArray(content) {
   throw new Error('The model response did not contain a translations array')
 }
 
-async function translateBatch(paragraphs) {
+async function translateBatch(paragraphs, retryDepth = 0) {
   const response = await fetch(ENDPOINT, {
     method: 'POST',
     headers: {
@@ -89,7 +89,16 @@ async function translateBatch(paragraphs) {
   const content = payload.choices?.[0]?.message?.content
   if (!content) throw new Error('GitHub Models returned an empty translation')
   const translations = parseJsonArray(content).map((value) => String(value).trim())
-  if (translations.length !== paragraphs.length) throw new Error(`Expected ${paragraphs.length} translations, received ${translations.length}`)
+  if (translations.length !== paragraphs.length || translations.some((value) => !value)) {
+    if (paragraphs.length === 1 || retryDepth >= 3) {
+      throw new Error(`Expected ${paragraphs.length} complete translations, received ${translations.filter(Boolean).length}`)
+    }
+    const middle = Math.ceil(paragraphs.length / 2)
+    console.warn(`The model merged or omitted a paragraph; retrying ${paragraphs.length} paragraphs as ${middle} + ${paragraphs.length - middle}.`)
+    const first = await translateBatch(paragraphs.slice(0, middle), retryDepth + 1)
+    const second = await translateBatch(paragraphs.slice(middle), retryDepth + 1)
+    return [...first, ...second]
+  }
   return translations
 }
 
@@ -163,7 +172,7 @@ outer: for (const descriptor of document.sections) {
     const indexes = []
     const paragraphs = []
     let characters = 0
-    for (let index = cursor; index < section.original.length && indexes.length < 10; index += 1) {
+    for (let index = cursor; index < section.original.length && indexes.length < 4; index += 1) {
       if (section.modern[index]?.trim()) continue
       const paragraph = section.original[index]
       if (indexes.length && characters + paragraph.length > batchCharacters) break
