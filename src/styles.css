@@ -603,7 +603,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .chat-message.self { justify-content: flex-end; }
 .mini-avatar { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; overflow: hidden; border: 1px solid var(--line); }
 .mini-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
-.chat-message p { max-width: 78%; margin: 0; padding: 11px 13px; border: 1px solid var(--line-soft); background: rgba(255,255,255,.026); color: var(--bone-dim); font-family: var(--serif); font-size: 11px; line-height: 1.85; }
+.chat-message p { max-width: 78%; margin: 0; padding: 11px 13px; border: 1px solid var(--line-soft); background: rgba(255,255,255,.026); color: var(--bone-dim); font-family: var(--serif); font-size: 11px; line-height: 1.85; white-space: pre-wrap; }
 .chat-message.self p { background: rgba(196,154,85,.1); border-color: var(--line); color: var(--bone); }
 .chat-message.thinking p { display: flex; align-items: center; gap: 5px; }
 .chat-message.thinking p > i { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); animation: listenPulse 1.15s infinite ease-in-out; }

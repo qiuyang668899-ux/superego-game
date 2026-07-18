@@ -1,7 +1,6 @@
-import { createHash } from 'node:crypto'
-
 const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions'
 const DEFAULT_MODEL = 'deepseek-v4-flash'
+const runtimeEnv = typeof process === 'undefined' ? {} : process.env
 
 function cleanText(value, maxLength) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
@@ -65,7 +64,14 @@ function cleanContext(value) {
 
 function userId(context) {
   const basis = `${context.profile.playerName}|${context.profile.primeVow}|${context.profile.agent.name}`
-  return `superego_${createHash('sha256').update(basis).digest('hex').slice(0, 24)}`
+  let left = 0x811c9dc5
+  let right = 0x9e3779b9
+  for (let index = 0; index < basis.length; index += 1) {
+    left = Math.imul(left ^ basis.charCodeAt(index), 0x01000193)
+    right = Math.imul(right ^ basis.charCodeAt(index), 0x85ebca6b)
+  }
+  const hash = `${(left >>> 0).toString(16).padStart(8, '0')}${(right >>> 0).toString(16).padStart(8, '0')}`
+  return `superego_${hash}`
 }
 
 function systemPrompt(context) {
@@ -100,6 +106,9 @@ function parseModelReply(content) {
   const cleaned = cleanText(content, 12000).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const parsed = JSON.parse(cleaned)
   const reply = cleanText(parsed.reply, 5000)
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '• ')
   if (!reply) throw new Error('DeepSeek returned an empty reply')
   return {
     reply,
@@ -108,8 +117,37 @@ function parseModelReply(content) {
   }
 }
 
+async function requestDeepSeek(fetchImpl, apiKey, body, signal) {
+  const response = await fetchImpl(DEEPSEEK_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal,
+  })
+
+  if (!response.ok) {
+    const detail = cleanText(await response.text(), 800)
+    const error = new Error(response.status === 402 ? 'AI 心核余额不足' : `AI 心核暂时不可用（${response.status}）${detail ? `：${detail}` : ''}`)
+    error.statusCode = response.status >= 500 ? 503 : response.status
+    throw error
+  }
+
+  const result = await response.json()
+  const choice = result.choices?.[0]
+  if (!choice?.message?.content) throw new Error('DeepSeek returned no message')
+  if (choice.finish_reason === 'content_filter') {
+    const error = new Error('这条内容暂时无法由云端心核处理')
+    error.statusCode = 422
+    throw error
+  }
+  return choice
+}
+
 export async function createCoachReply(payload, options = {}) {
-  const apiKey = options.apiKey || process.env.DEEPSEEK_API_KEY
+  const apiKey = options.apiKey || runtimeEnv.DEEPSEEK_API_KEY
   if (!apiKey) {
     const error = new Error('AI 心核尚未配置')
     error.statusCode = 503
@@ -128,44 +166,46 @@ export async function createCoachReply(payload, options = {}) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 55000)
   try {
-    const response = await (options.fetchImpl || fetch)(DEEPSEEK_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.DEEPSEEK_MODEL || DEFAULT_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt(context) },
-          ...cleanHistory(payload?.history),
-          { role: 'user', content: message },
-        ],
-        thinking: { type: 'disabled' },
-        temperature: 0.45,
-        max_tokens: 1400,
-        response_format: { type: 'json_object' },
-        stream: false,
-        user_id: userId(context),
-      }),
-      signal: controller.signal,
-    })
+    const fetchImpl = options.fetchImpl || fetch
+    const messages = [
+      { role: 'system', content: systemPrompt(context) },
+      ...cleanHistory(payload?.history),
+      { role: 'user', content: message },
+    ]
+    const baseRequest = {
+      model: options.model || runtimeEnv.DEEPSEEK_MODEL || DEFAULT_MODEL,
+      thinking: { type: 'disabled' },
+      response_format: { type: 'json_object' },
+      stream: false,
+      user_id: userId(context),
+    }
+    const choice = await requestDeepSeek(fetchImpl, apiKey, {
+      ...baseRequest,
+      messages,
+      temperature: 0.4,
+      max_tokens: 1800,
+    }, controller.signal)
 
-    if (!response.ok) {
-      const detail = cleanText(await response.text(), 800)
-      const error = new Error(response.status === 402 ? 'AI 心核余额不足' : `AI 心核暂时不可用（${response.status}）${detail ? `：${detail}` : ''}`)
-      error.statusCode = response.status >= 500 ? 503 : response.status
-      throw error
+    try {
+      return parseModelReply(choice.message.content)
+    } catch (parseError) {
+      const repaired = await requestDeepSeek(fetchImpl, apiKey, {
+        ...baseRequest,
+        messages: [
+          ...messages,
+          { role: 'assistant', content: cleanText(choice.message.content, 6000) },
+          { role: 'user', content: '上一条输出不是完整、合法的 JSON。请从头重写一次，只输出完整 JSON；不得省略 reply、memory_notes、mode。' },
+        ],
+        temperature: 0.2,
+        max_tokens: 2200,
+      }, controller.signal)
+      try {
+        return parseModelReply(repaired.message.content)
+      } catch {
+        parseError.statusCode = 502
+        throw parseError
+      }
     }
-    const result = await response.json()
-    const choice = result.choices?.[0]
-    if (!choice?.message?.content) throw new Error('DeepSeek returned no message')
-    if (choice.finish_reason === 'content_filter') {
-      const error = new Error('这条内容暂时无法由云端心核处理')
-      error.statusCode = 422
-      throw error
-    }
-    return parseModelReply(choice.message.content)
   } catch (error) {
     if (error?.name === 'AbortError') {
       const timeoutError = new Error('超我思考得太久了，请稍后再试')

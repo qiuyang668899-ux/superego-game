@@ -62,6 +62,32 @@ test('handles a crisis locally without transmitting it', async () => {
   assert.match(result.reply, /可信任的人/)
 })
 
+test('repairs a truncated JSON response before it reaches the user', async () => {
+  let calls = 0
+  const result = await createCoachReply({
+    message: '结合刚才的内容给我一个办法。',
+    history: [{ role: 'user', content: '我想创业，又怕失去收入。' }],
+    context: { profile: { playerName: '修行者' } },
+  }, {
+    apiKey: 'test-only',
+    fetchImpl: async () => {
+      calls += 1
+      const content = calls === 1
+        ? '{"reply":"先保留工作，同时用'
+        : JSON.stringify({ reply: '**第一步：**\n- 先保留工作，用两个周末访谈十位潜在用户，再决定是否投入。', memory_notes: [], mode: 'coach' })
+      return new Response(JSON.stringify({
+        choices: [{ finish_reason: calls === 1 ? 'length' : 'stop', message: { content } }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+
+  assert.equal(calls, 2)
+  assert.equal(result.mode, 'coach')
+  assert.match(result.reply, /十位潜在用户/)
+  assert.doesNotMatch(result.reply, /\*\*/)
+  assert.match(result.reply, /• 先保留工作/)
+})
+
 test('rejects an empty question before calling the model', async () => {
   await assert.rejects(
     () => createCoachReply({ message: '   ' }, { apiKey: 'test-only' }),
