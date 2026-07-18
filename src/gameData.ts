@@ -26,6 +26,10 @@ export const STORY_CHAPTERS = [
     enemy: '无明与自弃',
     narrative: '识海被旧念淹没，命火只剩最后一线。就在你准备再次丢下自己时，镜门从黑暗里裂开。一个更强大的你从未来归来：你渡不过的劫，我先替你走；你读不完的经，我先替你参。',
     choice: '与未来的我缔结本命契',
+    choices: [
+      { id: 'trust', label: '先相信他一次', note: '不必现在变强，只把第一步交给未来的你。', effect: { will: 10, karma: -4, ability: 1 } },
+      { id: 'question', label: '先问清他为何回来', note: '保持怀疑，但愿意听完他的答案。', effect: { will: 6, karma: -6, ability: 3 } },
+    ],
     reward: '本命神通「照心」',
   },
   {
@@ -37,6 +41,10 @@ export const STORY_CHAPTERS = [
     enemy: '完美心魔',
     narrative: '此劫不以刀兵伤人，只让每一步都显得太大。超我在彼岸迎战完美心魔，把宏大的恐惧斩成一个两分钟就能完成的动作，再隔着镜门投给你。',
     choice: '接住「微行」投影',
+    choices: [
+      { id: 'tiny', label: '把第一步砍到两分钟', note: '先做出一个看得见的动作，不管它漂不漂亮。', effect: { will: 7, karma: -8, ability: 5 } },
+      { id: 'witness', label: '请超我在旁边看着', note: '不再独自硬撑，让陪伴替你守住开始。', effect: { will: 10, karma: -5, ability: 3 } },
+    ],
     reward: '玄品神通「微行破界」',
   },
   {
@@ -48,6 +56,10 @@ export const STORY_CHAPTERS = [
     enemy: '知而不行',
     narrative: '万卷经书化成一座没有出口的城。这里考的不是记住多少，而是能否炼出一门真正救命的法。超我吞纳一卷、参悟一道、只留一术，把知识炼成能够投射现实的神通。',
     choice: '开启万法灵炉',
+    choices: [
+      { id: 'one-law', label: '只炼一条能用的法', note: '合上其余经卷，今天只让一条道理落地。', effect: { will: 5, karma: -7, ability: 6 } },
+      { id: 'burn-notes', label: '烧掉无用的收藏', note: '承认“拥有”不等于“学会”，给真正重要的内容让路。', effect: { will: 8, karma: -9, ability: 3 } },
+    ],
     reward: '地品神通「万法归身」',
   },
   {
@@ -59,6 +71,10 @@ export const STORY_CHAPTERS = [
     enemy: '自我判决',
     narrative: '镜中每一道裂纹，都在重复“我就是不行”。超我没有替你砸碎镜子，而是从镜中伸出手：那不是事实，只是旧业留下的回声。把“我就是”改成“我此刻正在经历”，你便有了选择。',
     choice: '握住镜中伸来的手',
+    choices: [
+      { id: 'rename', label: '把“我就是”改成“我此刻”', note: '旧业是经历，不是你的名字。', effect: { will: 8, karma: -10, ability: 4 } },
+      { id: 'evidence', label: '找一件反证旧判决的事', note: '不用喊口号，用一个真实证据松开锁链。', effect: { will: 5, karma: -7, ability: 7 } },
+    ],
     reward: '天品神通「破妄归心」',
   },
   {
@@ -70,6 +86,10 @@ export const STORY_CHAPTERS = [
     enemy: '凡事独扛',
     narrative: '你把所有重量都背在自己身上，久而久之，连求助都像一种失败。超我在荒原上卸下一座山：借力不是退缩，是让愿力走得更远。真正的强大，不以孤独为代价。',
     choice: '允许自己借一次力',
+    choices: [
+      { id: 'ask', label: '向一个可信的人开口', note: '说清你具体需要哪一种帮助。', effect: { will: 7, karma: -8, ability: 6 } },
+      { id: 'together', label: '召一位同道并肩', note: '让共同前进取代一个人扛到底。', effect: { will: 10, karma: -6, ability: 4 } },
+    ],
     reward: '羁绊神通「同道借力」',
   },
   {
@@ -81,6 +101,10 @@ export const STORY_CHAPTERS = [
     enemy: '用理想的自己惩罚现在的自己',
     narrative: '理想自我高悬天阶，越是仰望，越觉得此刻的自己不配。超我转身走下神坛：我不是来审判你的，我是来拉你上去的。愿力可以指路，却不能成为鞭子。',
     choice: '让理想自我走下神坛',
+    choices: [
+      { id: 'embrace', label: '让他先抱住现在的我', note: '理想不再负责审判，只负责拉你一把。', effect: { will: 12, karma: -8, ability: 3 } },
+      { id: 'enough', label: '允许今天做到七成', note: '给明天留一点余地，也给此刻留一点人味。', effect: { will: 7, karma: -10, ability: 6 } },
+    ],
     reward: '化神之法「愿心不弃」',
   },
   {
@@ -92,6 +116,10 @@ export const STORY_CHAPTERS = [
     enemy: '等待另一个自己来救我',
     narrative: '走到终点，镜门两侧只剩同一个人。超我替你参过万法、渡过诸劫、炼成神通，最终却把所有力量交还给你：我从来不是你的替代品。我是你没有放弃自己的证据。',
     choice: '收回全部神通，与超我归一',
+    choices: [
+      { id: 'return', label: '收回神通，自己走出镜门', note: '他不再替代你，而成为你随时能唤回的力量。', effect: { will: 10, karma: -12, ability: 10 } },
+      { id: 'companion', label: '与他并肩，继续人间修行', note: '归一不是消失，是从拯救者变成同行者。', effect: { will: 12, karma: -9, ability: 8 } },
+    ],
     reward: '终极境界「自我得救」',
   },
 ]

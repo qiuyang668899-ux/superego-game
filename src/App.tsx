@@ -58,6 +58,8 @@ import {
   configureAgent,
   DEFAULT_STATE,
   distillKnowledge,
+  getCultivationDirective,
+  getPersonalDestinyLine,
   getRealm,
   growAgent,
   loadGame,
@@ -71,6 +73,7 @@ import type { CultivationArt, GameState, KnowledgeType, TabId } from './types'
 
 const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`
 const AVATAR_PATH = `${ASSET_BASE}superego-avatar.jpg`
+const STORY_SCENE_PATH = `${ASSET_BASE}scene-main-quest-v2.jpg`
 
 const tabItems: Array<{ id: TabId; label: string; note: string; icon: typeof Home }> = [
   { id: 'cave', label: '灵台', note: '超我代修', icon: Home },
@@ -191,7 +194,7 @@ function App() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      ;['scene-lingtai.jpg', 'scene-library.jpg', 'scene-destiny.jpg', 'scene-mirror.jpg', 'superego-avatar.jpg'].forEach((file) => {
+      ;['scene-lingtai.jpg', 'scene-library.jpg', 'scene-destiny.jpg', 'scene-mirror.jpg', 'scene-main-quest-v2.jpg', 'superego-avatar.jpg'].forEach((file) => {
         const image = new Image()
         image.decoding = 'async'
         image.src = `${ASSET_BASE}${file}`
@@ -229,6 +232,7 @@ function App() {
   }, [game.activeTab])
 
   const realmState = useMemo(() => getRealm(game.xp), [game.xp])
+  const directive = useMemo(() => getCultivationDirective(game), [game])
 
   const patchGame = (patch: Partial<GameState> | ((current: GameState) => GameState)) => {
     setGame((current) => typeof patch === 'function' ? patch(current) : { ...current, ...patch })
@@ -265,8 +269,14 @@ function App() {
     setToast('本命契已成 · 超我开始替你修行')
   }
 
-  const advanceStory = () => {
+  const advanceStory = (choiceId: string) => {
     const chapter = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
+    const choice = chapter.choices.find((item) => item.id === choiceId) || chapter.choices[0]
+    if (game.clearedStoryChapters.includes(chapter.index)) {
+      setToast('这一劫已经走过了，它留下的选择已经写进你的命书')
+      setShowStory(false)
+      return
+    }
     if (game.xp < chapter.requirement) {
       setToast(`还差 ${chapter.requirement - game.xp} 修为，先完成一个小任务吧`)
       return
@@ -281,15 +291,18 @@ function App() {
     patchGame((current) => growAgent({
       ...current,
       storyIndex: nextIndex,
+      clearedStoryChapters: [...new Set([...current.clearedStoryChapters, chapter.index])],
+      storyChoices: [{ chapterIndex: chapter.index, choiceId: choice.id, label: choice.label, createdAt: Date.now() }, ...current.storyChoices].slice(0, STORY_CHAPTERS.length),
       xp: current.xp + 36,
-      will: clamp(current.will + 8),
-      karma: clamp(current.karma - 8),
+      will: clamp(current.will + choice.effect.will),
+      karma: clamp(current.karma + choice.effect.karma),
+      ability: clamp(current.ability + choice.effect.ability),
       merit: current.merit + 12,
       energy: Math.max(0, current.energy - 2),
-    }, 'story', `我们一起走过了“${chapter.title}”。我会把这一关的结果带进以后主动做出的决定。`))
+    }, 'story', `在“${chapter.title}”，你选择了“${choice.label}”。我会把这种走法带进以后主动做出的决定。`))
     setShowStory(false)
     playTone(game.soundOn, 'breakthrough')
-    setToast(`${chapter.reward} · 这一关过了`)
+    setToast(`${chapter.reward} · 你的选择已写入命书`)
   }
 
   const projectArt = (art: CultivationArt) => {
@@ -318,6 +331,7 @@ function App() {
       karma: clamp(current.karma - 6),
       merit: current.merit + 9,
       energy: Math.min(current.maxEnergy, current.energy + 1),
+      quests: current.quests.map((quest) => quest.id === 'act' ? { ...quest, completed: true } : quest),
       projections: current.projections.map((item) => item.id === projectionId ? { ...item, completed: true } : item),
       initiatives: current.initiatives.map((item) => item.id === projection.initiativeId ? { ...item, status: 'completed' as const } : item),
       arts: current.arts.map((art) => art.id === projection.artId ? { ...art, mastery: clamp(art.mastery + 8) } : art),
@@ -348,9 +362,30 @@ function App() {
   }
 
   const simulateInvite = () => {
-    patchGame((current) => ({ ...current, energy: current.energy + 3, inviteCount: current.inviteCount + 1 }))
+    const nextCount = game.inviteCount + 1
+    const milestoneReward: Record<number, number> = { 1: 2, 3: 6, 7: 15 }
+    const milestone = [1, 3, 7].find((value) => nextCount >= value && !game.claimedInviteMilestones.includes(value))
+    const bonus = milestone ? milestoneReward[milestone] : 0
+    patchGame((current) => ({
+      ...current,
+      energy: current.energy + 3 + bonus,
+      inviteCount: nextCount,
+      claimedInviteMilestones: milestone ? [...current.claimedInviteMilestones, milestone] : current.claimedInviteMilestones,
+    }))
     playTone(game.soundOn, 'reward')
-    setToast('好友完成序章 · 你们各得命火 +3')
+    setToast(milestone ? `同行里程碑 ${milestone} 人达成 · 命火 +${3 + bonus}` : '好友完成序章 · 你们各得命火 +3')
+  }
+
+  const followDirective = () => {
+    if (directive.target === 'story') {
+      setShowStory(true)
+      return
+    }
+    if (directive.target === 'quest' && directive.questId) {
+      completeQuest(directive.questId)
+      return
+    }
+    patchGame({ activeTab: directive.target as TabId })
   }
 
   const acceptInitiative = (initiativeId: string) => {
@@ -388,6 +423,8 @@ function App() {
         {game.activeTab === 'cave' && (
           <CaveScreen
             game={game}
+            directive={directive}
+            onDirective={followDirective}
             onQuest={completeQuest}
             onStory={() => setShowStory(true)}
             onLibrary={() => patchGame({ activeTab: 'library' })}
@@ -448,7 +485,7 @@ function TopBar({ game, realmLabel, onShare, onSound, onMenu, onShop }: { game: 
         <span className="realm-chip"><Gem size={14} />{realmLabel}</span>
       </div>
       <div className="top-actions">
-        <button onClick={onShop} className="energy-button" aria-label="打开功德坊补充命火"><Flame size={16} /><span>命火</span><b>{game.energy}</b><small>/{game.maxEnergy}</small><Plus size={14} /></button>
+        <button onClick={onShop} className="energy-button" aria-label="打开功德坊补充命火"><Flame size={16} /><span>命火</span><b>{game.energy}</b><small>{game.energy > game.maxEnergy ? '·储备' : `/${game.maxEnergy}`}</small><Plus size={14} /></button>
         <button onClick={onShare} className="icon-button" aria-label="生成修为战报"><Share2 size={18} /></button>
         <button onClick={onSound} className="icon-button" aria-label={game.soundOn ? '关闭声音' : '打开声音'}>{game.soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
         <button onClick={onMenu} className="icon-button" aria-label="打开菜单"><Menu size={19} /></button>
@@ -457,13 +494,16 @@ function TopBar({ game, realmLabel, onShare, onSound, onMenu, onShop }: { game: 
   )
 }
 
-function CaveScreen({ game, onQuest, onStory, onLibrary, onMirror, onSoul, onAcceptInitiative, onRefreshInitiative }: { game: GameState; onQuest: (id: string) => void; onStory: () => void; onLibrary: () => void; onMirror: () => void; onSoul: () => void; onAcceptInitiative: (id: string) => void; onRefreshInitiative: () => void }) {
+function CaveScreen({ game, directive, onDirective, onQuest, onStory, onLibrary, onMirror, onSoul, onAcceptInitiative, onRefreshInitiative }: { game: GameState; directive: ReturnType<typeof getCultivationDirective>; onDirective: () => void; onQuest: (id: string) => void; onStory: () => void; onLibrary: () => void; onMirror: () => void; onSoul: () => void; onAcceptInitiative: (id: string) => void; onRefreshInitiative: () => void }) {
   const realm = getRealm(game.xp)
   const story = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
+  const storyCleared = game.clearedStoryChapters.includes(story.index)
   const completed = game.quests.filter((quest) => quest.completed).length
   const latestArt = [...game.arts].sort((a, b) => b.createdAt - a.createdAt)[0]
   return (
     <div className="screen cave-screen">
+      <MainMissionCompass game={game} directive={directive} onContinue={onDirective} />
+      <CultivationPath game={game} directive={directive} />
       <section className="cave-grid">
         <aside className="story-panel glass-panel">
           <div className="panel-label"><ScrollText size={14} />七劫主线</div>
@@ -471,12 +511,12 @@ function CaveScreen({ game, onQuest, onStory, onLibrary, onMirror, onSoul, onAcc
           <h2>{story.title}</h2>
           <p>{story.narrative.slice(0, 91)}……</p>
           <div className="enemy-line"><Swords size={15} /><span>此劫心魔</span><b>{story.enemy}</b></div>
-          <button className="game-button primary" onClick={onStory}>
-            {game.xp >= story.requirement ? <Play size={16} /> : <LockKeyhole size={16} />}
-            {game.xp >= story.requirement ? '入劫 · 继续主线' : `还差 ${story.requirement - game.xp} 修为`}
+          <button className="game-button primary" onClick={onStory} disabled={storyCleared}>
+            {storyCleared ? <Check size={16} /> : game.xp >= story.requirement ? <Play size={16} /> : <LockKeyhole size={16} />}
+            {storyCleared ? '七劫已圆满 · 人间继续' : game.xp >= story.requirement ? '入劫 · 继续主线' : `还差 ${story.requirement - game.xp} 修为`}
           </button>
           <div className="chapter-dots">
-            {STORY_CHAPTERS.map((chapter) => <i key={chapter.index} className={chapter.index < game.storyIndex ? 'passed' : chapter.index === game.storyIndex ? 'active' : ''} />)}
+            {STORY_CHAPTERS.map((chapter) => <i key={chapter.index} className={game.clearedStoryChapters.includes(chapter.index) ? 'passed' : chapter.index === game.storyIndex ? 'active' : ''} />)}
           </div>
         </aside>
 
@@ -543,12 +583,50 @@ function CaveScreen({ game, onQuest, onStory, onLibrary, onMirror, onSoul, onAcc
 
       <AgentSoulPanel game={game} onOpen={onSoul} onAccept={onAcceptInitiative} onRefresh={onRefreshInitiative} />
 
+      <section className="future-letter glass-panel">
+        <div className="future-letter-seal">彼<br />岸</div>
+        <div><span>超我主动来信 · 只写给 {game.playerName}</span><h3>{getPersonalDestinyLine(game)}</h3><p>{game.initiatives.find((item) => item.status === 'proposed')?.reason || '我正在安静回看你最近走过的路。没有真正值得做的事时，我不会拿空话打扰你。'}</p></div>
+        <button onClick={onSoul}>查看他的判断<ChevronRight size={14} /></button>
+      </section>
+
       <section className="latest-art-banner">
         <div className="art-sigil"><Sparkles size={21} /></div>
         <div><span>超我新悟神通</span><h3>{latestArt.name}</h3><p>{latestArt.insight}</p></div>
         <button onClick={onMirror}>投影归身<ArrowRight size={15} /></button>
       </section>
     </div>
+  )
+}
+
+function MainMissionCompass({ game, directive, onContinue }: { game: GameState; directive: ReturnType<typeof getCultivationDirective>; onContinue: () => void }) {
+  return (
+    <section className="main-mission-compass">
+      <div className="mission-number"><span>此刻</span><b>壹</b><small>只做一件事</small></div>
+      <div className="mission-copy">
+        <span>{directive.kicker} · {directive.progress}</span>
+        <h1>{directive.title}</h1>
+        <p>{directive.detail}</p>
+      </div>
+      <div className="mission-reward"><small>{directive.minutes} 分钟内</small><b>{directive.reward}</b><em>{game.energy > game.maxEnergy ? `命火 ${game.energy} · 含同行储备` : `命火 ${game.energy} / ${game.maxEnergy}`}</em></div>
+      <button onClick={onContinue}>{directive.cta}<ArrowRight size={17} /></button>
+    </section>
+  )
+}
+
+function CultivationPath({ game, directive }: { game: GameState; directive: ReturnType<typeof getCultivationDirective> }) {
+  const current = directive.target === 'library' ? 1 : directive.target === 'story' || directive.target === 'destiny' ? 2 : directive.target === 'mirror' ? 3 : 0
+  const steps = [
+    { mark: '愿', title: '照见自己', note: '说出真实处境' },
+    { mark: '法', title: '交给超我', note: '投书、笔记或困境' },
+    { mark: '劫', title: '彼岸代修', note: '炼法并渡过主线' },
+    { mark: '归', title: '神通归身', note: '现实只接住一步' },
+  ]
+  return (
+    <section className="cultivation-path" aria-label="一次完整修行路线">
+      <div><span>一轮修行怎么走</span><small>学习只是取法，救自己才是主线</small></div>
+      <ol>{steps.map((step, index) => <li key={step.mark} className={`${index < current ? 'passed' : ''} ${index === current ? 'active' : ''}`}><b>{index < current ? <Check size={14} /> : step.mark}</b><span><strong>{step.title}</strong><small>{step.note}</small></span></li>)}</ol>
+      <em>{game.clearedStoryChapters.length} / {STORY_CHAPTERS.length} 劫已过</em>
+    </section>
   )
 }
 
@@ -1068,18 +1146,20 @@ function LibraryScreen({ game, patchGame, onProject, onShop, setToast }: { game:
 
 function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (id: string) => void; onStory: () => void }) {
   const current = getRealm(game.xp)
+  const story = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
+  const allCleared = game.clearedStoryChapters.length >= STORY_CHAPTERS.length
   return (
     <div className="screen destiny-screen">
       <header className="screen-header">
         <div><span className="eyebrow"><Orbit size={15} />七劫天路 · 超我代修主线</span><h1>他在未来渡劫，只为回来拉你一把</h1><p>愿力为他点燃命火，万法助他炼成神通；你在现实中接住投射，能力才真正归你所有。</p></div>
-        <button className="game-button subtle" onClick={onStory}><ScrollText size={16} />入劫 · 继续主线</button>
+        <button className="game-button subtle" onClick={onStory} disabled={allCleared}><ScrollText size={16} />{allCleared ? '七劫已圆满' : '入劫 · 继续主线'}</button>
       </header>
 
       <section className="destiny-dashboard">
         <article className="current-realm-card">
           <span>当前境界</span><div className="realm-seal"><b>{current.realm.name[0]}</b></div>
           <h2>{current.realm.name} · {current.layer} 层</h2><p>{current.realm.subtitle}</p>
-          <div className="large-progress"><i style={{ width: `${current.progress}%` }} /></div><small>{current.progress}% · 累计修为 {game.xp}</small>
+          <div className="large-progress"><i style={{ width: `${current.progress}%` }} /></div><small>{current.next ? `再得 ${current.remaining} 修为，突破「${current.next.name}」` : '七境已满，继续人间修行'} · 累计 {game.xp}</small>
         </article>
         <div className="principle-card glass-panel">
           <span>核心法则</span><h2>愿力 ＞ 业力 ＞ 能力</h2>
@@ -1089,8 +1169,20 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
         <div className="merit-card glass-panel"><Trophy size={25} /><span>功德</span><b>{game.merit}</b><small>已完成的善意行动与自我照料</small></div>
       </section>
 
+      <section className="story-road glass-panel">
+        <div className="section-title"><div><span>七劫主线 · 故事进度</span><h2>{allCleared ? '镜门合一，人间路还长' : `下一劫：${story.enemy}`}</h2></div><small>{game.clearedStoryChapters.length} / {STORY_CHAPTERS.length} 劫已渡 · 每一劫都有你的选择</small></div>
+        <div className="story-road-track">
+          {STORY_CHAPTERS.map((chapter) => {
+            const passed = game.clearedStoryChapters.includes(chapter.index)
+            const active = chapter.index === game.storyIndex && !passed
+            const unlocked = game.xp >= chapter.requirement
+            return <article key={chapter.index} className={`${passed ? 'passed' : ''} ${active ? 'active' : ''} ${unlocked ? 'unlocked' : ''}`}><span>{passed ? <Check size={15} /> : String(chapter.index).padStart(2, '0')}</span><div><small>{chapter.code} · {chapter.scene}</small><h3>{chapter.title.replace(/^.*?：/, '')}</h3><p>{chapter.enemy}</p><em>{passed ? '已写入命书' : unlocked ? chapter.reward : `${chapter.requirement} 修为解锁`}</em></div></article>
+          })}
+        </div>
+      </section>
+
       <section className="realm-road">
-        <div className="section-title"><div><span>七境代修</span><h2>超我如何从命火走到归一</h2></div><small>不是变成别人，而是让理想自我回来拥抱此刻的你</small></div>
+        <div className="section-title"><div><span>七境成长 · 长期等级</span><h2>每次修行都会推进，不等同于故事关卡</h2></div><small>七劫讲你们经历了什么；七境讲超我积累了多少力量</small></div>
         <div className="realm-track-line">
           {REALMS.map((realm, index) => {
             const unlocked = game.xp >= realm.threshold
@@ -1346,34 +1438,92 @@ function Onboarding({ onFinish, isReplay = false }: { onFinish: (name: string, v
   )
 }
 
-function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: () => void; onAdvance: () => void }) {
+function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: () => void; onAdvance: (choiceId: string) => void }) {
   const chapter = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
   const unlocked = game.xp >= chapter.requirement
+  const cleared = game.clearedStoryChapters.includes(chapter.index)
+  const [selectedChoice, setSelectedChoice] = useState(chapter.choices[0].id)
+  const choice = chapter.choices.find((item) => item.id === selectedChoice) || chapter.choices[0]
   return (
     <div className="modal-layer" role="dialog" aria-modal="true" aria-label={chapter.title}>
       <div className="story-modal modal-card">
         <button className="modal-close" onClick={onClose}><X size={19} /></button>
-        <div className="story-visual"><img src={AVATAR_PATH} alt="超我穿过镜门" /><div /><span>{chapter.scene}</span></div>
+        <div className="story-visual"><img src={STORY_SCENE_PATH} alt="超我穿过镜门" /><div /><span>{chapter.scene}</span></div>
         <div className="story-body">
           <span className="story-code">{chapter.code}</span><h2>{chapter.title}</h2><p>{chapter.narrative}</p>
           <div className="boss-card"><span><Swords size={17} /></span><div><small>此劫心魔</small><b>{chapter.enemy}</b></div><em>业力 {Math.max(8, game.karma)}</em></div>
+          <div className="story-choices">
+            <span>这一次，由你决定超我怎样破劫</span>
+            {chapter.choices.map((item) => <button key={item.id} className={selectedChoice === item.id ? 'active' : ''} onClick={() => setSelectedChoice(item.id)}><i>{selectedChoice === item.id ? <Check size={13} /> : '择'}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}
+          </div>
+          <div className="choice-consequence"><Sparkles size={14} /><span>此路将影响</span><b>愿力 +{choice.effect.will} · 业力 {choice.effect.karma} · 能力 +{choice.effect.ability}</b></div>
           <div className="story-reward"><Trophy size={16} /><span>过关奖励</span><b>{chapter.reward}</b></div>
-          <button className="game-button primary" onClick={onAdvance} disabled={!unlocked}>{unlocked ? <Zap size={17} /> : <LockKeyhole size={17} />}{unlocked ? `${chapter.choice} · 消耗 2 命火` : `还需 ${chapter.requirement - game.xp} 修为`}</button>
-          <blockquote>超我：“此劫我先替你破，炼成的法，终会一寸不少地还给你。”</blockquote>
+          <button className="game-button primary" onClick={() => onAdvance(selectedChoice)} disabled={!unlocked || cleared}>{cleared ? <Check size={17} /> : unlocked ? <Zap size={17} /> : <LockKeyhole size={17} />}{cleared ? '此劫已写入命书' : unlocked ? `${choice.label} · 消耗 2 命火` : `还需 ${chapter.requirement - game.xp} 修为`}</button>
+          <blockquote>超我：“{game.playerName}，我可以替你先走进黑暗，但最后握住我的人，只能是你。”</blockquote>
         </div>
       </div>
     </div>
   )
 }
 
+type ShareMode = 'realm' | 'rescue' | 'challenge'
+
 function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInviteAccepted }: { game: GameState; realmLabel: string; onClose: () => void; setToast: (value: string) => void; onShareReward: () => void; onInviteAccepted: () => void }) {
-  const quote = game.ability >= 60 ? '他在彼岸渡劫，我在此刻接住一步。' : '我让未来的自己替我修仙，再回来度我。'
+  const [mode, setMode] = useState<ShareMode>('rescue')
+  const chapter = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
+  const lastChoice = game.storyChoices[0]
+  const seals = ['见微知行', '不弃此身', '借火归心', '破妄而行', '柔而有骨', '愿照长夜']
+  const fateSeal = seals[[...`${game.playerName}${game.primeVow}`].reduce((sum, item) => sum + item.charCodeAt(0), 0) % seals.length]
+  const shareModes: Record<ShareMode, { label: string; eyebrow: string; title: string; quote: string }> = {
+    realm: { label: '境界战报', eyebrow: `我的超我 · ${realmLabel}`, title: `${game.playerName}的本命签`, quote: `「${fateSeal}」——愿力 ${game.will}，已有 ${game.arts.length} 门神通归途可循。` },
+    rescue: { label: '归身故事', eyebrow: '过去的我卡在原地', title: '未来的我，回来拉了我一把', quote: lastChoice ? `在上一劫，我选择了“${lastChoice.label}”。这不是口号，是我真的走过的一步。` : '我让未来的自己先替我渡劫，再把一小步投回此刻。' },
+    challenge: { label: '共渡此劫', eyebrow: `七劫主线 · ${chapter.code}`, title: `与我共渡「${chapter.enemy}」`, quote: '不用变得很厉害。来点一盏命火，我们各自把今天走下去。' },
+  }
+  const card = shareModes[mode]
   const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${game.referralCode}`
-  const shareText = `我在《超我》修到「${realmLabel}」了。\n我把经典、笔记和困境投进万法灵炉，让未来的自己替我渡劫、炼成神通，再回来度我。\n\n${quote}\n\n邀请码：${game.referralCode}\n${inviteUrl}\n好友完成序章后，我们各得 3 点命火。`
+  const shareText = `${card.title}\n${card.quote}\n\n我在《超我》让未来的自己替我修行，再回来做我的教练。\n邀请码：${game.referralCode}\n${inviteUrl}\n好友完成序章后，我们各得 3 点命火。`
+
+  const writeShareText = async () => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareText)
+        return true
+      } catch {
+        // Fall through to the selection-based copy used by older mobile browsers.
+      }
+    }
+    const textarea = document.createElement('textarea')
+    textarea.value = shareText
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    textarea.setSelectionRange(0, textarea.value.length)
+    const copied = document.execCommand('copy')
+    textarea.remove()
+    return copied
+  }
 
   const copyShare = async () => {
-    await navigator.clipboard.writeText(shareText)
-    onShareReward()
+    if (await writeShareText()) {
+      onShareReward()
+    } else {
+      setToast('自动复制被浏览器拦住了，请使用“一键分享”或下载海报')
+    }
+  }
+
+  const nativeShare = async () => {
+    if (!navigator.share) {
+      await copyShare()
+      return
+    }
+    try {
+      await navigator.share({ title: card.title, text: shareText, url: inviteUrl })
+      onShareReward()
+    } catch {
+      // Closing the native share sheet is not an error that needs interrupting the player.
+    }
   }
 
   const downloadCard = async () => {
@@ -1388,10 +1538,11 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
     context.fillStyle = gradient
     context.fillRect(0, 0, 1080, 1440)
     const image = new Image()
-    image.src = AVATAR_PATH
+    image.src = STORY_SCENE_PATH
     await image.decode()
     context.globalAlpha = 0.9
-    context.drawImage(image, 0, 0, image.width, image.height, 190, 80, 700, 1060)
+    const cropWidth = Math.min(image.width, image.height * .75)
+    context.drawImage(image, (image.width - cropWidth) / 2, 0, cropWidth, image.height, 0, 0, 1080, 1080)
     const fade = context.createLinearGradient(0, 650, 0, 1220)
     fade.addColorStop(0, 'rgba(8,9,7,0)')
     fade.addColorStop(0.66, 'rgba(8,9,7,.92)')
@@ -1404,23 +1555,25 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
     context.fillText('SUPEREGO · AI 修行养成', 74, 84)
     context.fillStyle = '#ffffff'
     context.font = '800 88px -apple-system, PingFang SC, sans-serif'
-    context.fillText('我的超我', 74, 1002)
+    context.fillText(mode === 'challenge' ? '共渡此劫' : '我的超我', 74, 976)
     context.fillStyle = '#ffe39a'
-    context.font = '700 58px -apple-system, PingFang SC, sans-serif'
-    context.fillText(realmLabel, 74, 1080)
+    context.font = '700 48px -apple-system, PingFang SC, sans-serif'
+    const title = card.title.length > 16 ? `${card.title.slice(0, 16)}…` : card.title
+    context.fillText(title, 74, 1052)
     context.fillStyle = 'rgba(255,255,255,.75)'
-    context.font = '34px -apple-system, PingFang SC, sans-serif'
-    context.fillText(quote, 74, 1160)
+    context.font = '30px -apple-system, PingFang SC, sans-serif'
+    const quote = card.quote.length > 25 ? `${card.quote.slice(0, 25)}…` : card.quote
+    context.fillText(quote, 74, 1120)
     context.fillStyle = 'rgba(255,255,255,.12)'
     context.fillRect(74, 1210, 932, 1)
     context.fillStyle = '#ffffff'
     context.font = '600 31px -apple-system, PingFang SC, sans-serif'
-    context.fillText(`愿力 ${game.will}   功法 ${game.arts.length}   功德 ${game.merit}`, 74, 1277)
+    context.fillText(`愿力 ${game.will}   七劫 ${game.clearedStoryChapters.length}/7   功德 ${game.merit}`, 74, 1277)
     context.fillStyle = 'rgba(255,255,255,.5)'
     context.font = '27px -apple-system, PingFang SC, sans-serif'
     context.fillText(`邀请码 ${game.referralCode} · 好友过序章双方得命火`, 74, 1350)
     const link = document.createElement('a')
-    link.download = `超我修为战报-${Date.now()}.png`
+    link.download = `超我-${card.label}-${Date.now()}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
     setToast('高清修为战报已生成')
@@ -1431,13 +1584,16 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
       <div className="share-modal modal-card">
         <button className="modal-close" onClick={onClose}><X size={19} /></button>
         <div className="share-preview">
-          <img src={AVATAR_PATH} alt="我的超我修为战报" />
-          <div className="share-overlay"><span>SUPEREGO · AI 修行养成</span><div><small>我的超我</small><h2>{realmLabel}</h2><p>{quote}</p><em>愿力 {game.will} · 功法 {game.arts.length} · 功德 {game.merit}</em></div></div>
+          <img src={STORY_SCENE_PATH} alt="我的超我修行战报" />
+          <div className="share-overlay"><span>SUPEREGO · AI 修行养成</span><div><small>{card.eyebrow}</small><h2>{card.title}</h2><p>{card.quote}</p><em>愿力 {game.will} · 七劫 {game.clearedStoryChapters.length}/7 · 功德 {game.merit}</em></div></div>
         </div>
         <div className="share-actions">
-          <div><span>同行邀请</span><h2>叫一位朋友，一起把路走长</h2><p>好友完成序章后，你们各得 3 点命火。每天首次分享还可得 1 点。</p></div>
+          <div><span>同行邀请</span><h2>你的故事，选一种方式说</h2><p>不晒打卡，晒一次真实选择。好友完成序章后，你们各得 3 点命火。</p></div>
+          <div className="share-mode-tabs">{(Object.keys(shareModes) as ShareMode[]).map((item) => <button key={item} className={mode === item ? 'active' : ''} onClick={() => setMode(item)}>{shareModes[item].label}</button>)}</div>
           <div className="invite-card"><span>你的邀请令</span><b>{game.referralCode}</b><small>已有 {game.inviteCount} 位朋友与你同行</small></div>
-          <button onClick={copyShare}><Copy size={17} />复制邀请链接 · 今日 +1</button>
+          <div className="invite-milestones">{[1, 3, 7].map((value) => <span key={value} className={game.inviteCount >= value ? 'done' : ''}><b>{game.inviteCount >= value ? <Check size={12} /> : value}</b><small>{value} 位同行</small><em>额外 +{value === 1 ? 2 : value === 3 ? 6 : 15}</em></span>)}</div>
+          <button onClick={nativeShare}><Share2 size={17} />一键分享 · 今日首次 +1</button>
+          <button onClick={copyShare}><Copy size={17} />复制专属文案</button>
           <button onClick={downloadCard}><Download size={17} />下载战报海报</button>
           <button className="preview-invite" onClick={onInviteAccepted}><Users size={17} />模拟好友完成序章（预览）</button>
         </div>
@@ -1456,7 +1612,7 @@ function ShopModal({ game, onClose, onPurchase, onShare }: { game: GameState; on
         <header className="shop-header">
           <span className="shop-flame"><Flame size={25} /></span>
           <div><span>功德坊</span><h2>命火将熄，也能以同行续燃</h2><p>命火只用于渡劫主线和开启灵炉。镜门问道、今日三修一直免费。</p></div>
-          <div className="shop-balance"><small>当前命火</small><b>{game.energy}</b><span>/ {game.maxEnergy}</span></div>
+          <div className="shop-balance"><small>当前命火</small><b>{game.energy}</b><span>{game.energy > game.maxEnergy ? ' · 含储备' : `/ ${game.maxEnergy}`}</span></div>
         </header>
 
         <section className="free-energy">
@@ -1465,6 +1621,8 @@ function ShopModal({ game, onClose, onPurchase, onShare }: { game: GameState; on
           <div><Flame size={20} /><span><b>等命火自然恢复</b><small>每 3 小时恢复 1 点</small></span><em>约 {remainingHours} 小时</em></div>
         </section>
 
+        <section className="free-forever"><ShieldCheck size={18} /><div><b>不卖经文，不卖答案，不拿焦虑卡进度</b><p>全部原典与现代译文、镜门问道、每日基础修行永久免费。付费只购买更快推进支线与主线的命火，以及外观和陪伴型权益。</p></div></section>
+
         <div className="shop-section-title"><span>快速补给</span><small>预览版不会真实扣款</small></div>
         <section className="shop-packages">
           {SHOP_PACKAGES.map((item) => (
@@ -1472,6 +1630,7 @@ function ShopModal({ game, onClose, onPurchase, onShare }: { game: GameState; on
               <span className="package-tag">{item.tag}</span>
               <div className="package-flames"><Flame size={25} /><b>+{item.energy}</b></div>
               <h3>{item.name}</h3><p>{item.note}</p>
+              {item.id === 'monthly' && <ul><li>每日同行命火</li><li>专属命书皮肤</li><li>周度超我复盘</li></ul>}
               <button onClick={() => onPurchase(item.id, item.energy, item.name)}>¥{item.price} · 体验购买</button>
             </article>
           ))}
@@ -1538,6 +1697,10 @@ function SoulModal({ game, onClose, onAccept, onRefresh }: { game: GameState; on
           <div className="soul-section-title"><span>人格成长日志</span><small>已经自主复盘 {game.agent.growthCount} 次</small></div>
           <div>{game.agentJournal.slice(0, 6).map((entry) => <article key={entry.id}><span>{kindLabel[entry.kind]}</span><p>{entry.text}</p><time>{entry.createdAt <= 1 ? '初次醒来' : new Date(entry.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time></article>)}</div>
         </section>
+        <section className="shared-fate-book">
+          <div className="soul-section-title"><span>{game.playerName}与超我的共同命书</span><small>这些选择会改变他以后怎样帮助你</small></div>
+          {game.storyChoices.length ? <div>{game.storyChoices.slice(0, 5).map((record) => <article key={`${record.chapterIndex}-${record.createdAt}`}><b>{STORY_CHAPTERS[record.chapterIndex]?.code || '旧劫'}</b><p>你选择了“{record.label}”</p><small>{STORY_CHAPTERS[record.chapterIndex]?.choices.find((item) => item.id === record.choiceId)?.note}</small></article>)}</div> : <p>第一劫过后，你的选择会写在这里。超我会记住你偏好的破局方式，不再只给所有人一样的答案。</p>}
+        </section>
         <p className="soul-boundary"><ShieldCheck size={13} />这是一个有记忆、目标和主动决策能力的游戏人格代理，不宣称产生了人类意义上的真实意识；你可以查看、拒绝或重置它的每一次主动决定。</p>
       </div>
     </div>
@@ -1553,7 +1716,12 @@ function GameMenu({ game, onClose, onRestart, onReplay }: { game: GameState; onC
         <div className="profile-strip"><span>{game.playerName[0]}</span><div><b>{game.playerName}</b><small>本命愿 · {game.primeVow}</small></div><em>{getRealm(game.xp).realm.name}境</em></div>
         <div className="menu-stats"><span><b>{game.xp}</b>总修为</span><span><b>{game.agent.autonomy}</b>人格自主</span><span><b>{game.merit}</b>功德</span></div>
         <button className="menu-item" onClick={onReplay}><Play size={17} />重临序章<span>再看一次镜门立誓</span></button>
-        <button className="menu-item"><CircleEllipsis size={17} />版本纪事<span>第 9 轮 · 超我代修版</span></button>
+        <button className="menu-item"><CircleEllipsis size={17} />版本纪事<span>第 12 轮 · 七劫归身终局版</span></button>
+        <div className="iteration-chronicle">
+          <span><b>第 10 轮</b><em>主线归位</em><small>一个主按钮、七劫与七境分流、完整升级路线</small></span>
+          <span><b>第 11 轮</b><em>人格入命</em><small>渡劫选择、彼岸来信、共同命书与自主反馈</small></span>
+          <span><b>第 12 轮</b><em>同行传火</em><small>三类战报、本命签、邀请里程碑与克制付费</small></span>
+        </div>
         <button className="menu-item danger" onClick={onRestart}><RotateCcw size={17} />重开轮回<span>清除本地进度</span></button>
         <small>本作品以自我成长与行为实践为核心，不宣称超自然、医疗或治疗效果。</small>
       </div>

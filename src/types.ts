@@ -28,6 +28,13 @@ export interface QuestProgress {
   completed: boolean
 }
 
+export interface StoryChoiceRecord {
+  chapterIndex: number
+  choiceId: string
+  label: string
+  createdAt: number
+}
+
 export interface ChatMessage {
   id: string
   role: 'superego' | 'self'
@@ -99,10 +106,13 @@ export interface GameState {
   lastEnergyAt: number
   streak: number
   storyIndex: number
+  clearedStoryChapters: number[]
+  storyChoices: StoryChoiceRecord[]
   lastPracticeDate: string
   soundOn: boolean
   referralCode: string
   inviteCount: number
+  claimedInviteMilestones: number[]
   shareRewardDate: string
   purchaseHistory: string[]
   quests: QuestProgress[]

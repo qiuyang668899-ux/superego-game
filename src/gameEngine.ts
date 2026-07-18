@@ -1,5 +1,5 @@
-import { DAILY_QUESTS, REALMS, SEED_ARTS } from './gameData'
-import type { AgentIdentity, AgentInitiative, CultivationArt, GameState, KnowledgeType, Projection } from './types'
+import { DAILY_QUESTS, REALMS, SEED_ARTS, STORY_CHAPTERS } from './gameData'
+import type { AgentIdentity, AgentInitiative, CultivationArt, GameState, KnowledgeType, Projection, TabId } from './types'
 
 const STORAGE_KEY = 'superego-game-v1'
 
@@ -23,10 +23,13 @@ export const DEFAULT_STATE: GameState = {
   lastEnergyAt: Date.now(),
   streak: 1,
   storyIndex: 0,
+  clearedStoryChapters: [],
+  storyChoices: [],
   lastPracticeDate: todayKey(),
   soundOn: true,
   referralCode: 'SG7Q-2049',
   inviteCount: 0,
+  claimedInviteMilestones: [],
   shareRewardDate: '',
   purchaseHistory: [],
   quests: DAILY_QUESTS.map((quest) => ({ id: quest.id, completed: false })),
@@ -88,6 +91,11 @@ function normalizeState(value: Partial<GameState>): GameState {
     agent: { ...DEFAULT_STATE.agent, ...value.agent },
     initiatives: Array.isArray(value.initiatives) ? value.initiatives : DEFAULT_STATE.initiatives,
     agentJournal: Array.isArray(value.agentJournal) ? value.agentJournal : DEFAULT_STATE.agentJournal,
+    clearedStoryChapters: Array.isArray(value.clearedStoryChapters)
+      ? value.clearedStoryChapters
+      : Array.from({ length: Math.max(0, value.storyIndex || 0) }, (_, index) => index),
+    storyChoices: Array.isArray(value.storyChoices) ? value.storyChoices : [],
+    claimedInviteMilestones: Array.isArray(value.claimedInviteMilestones) ? value.claimedInviteMilestones : [],
     canonBookmarks: Array.isArray(value.canonBookmarks) ? value.canonBookmarks : DEFAULT_STATE.canonBookmarks,
     canonHistory: Array.isArray(value.canonHistory) ? value.canonHistory : DEFAULT_STATE.canonHistory,
     canonProgress: value.canonProgress && typeof value.canonProgress === 'object' ? value.canonProgress : DEFAULT_STATE.canonProgress,
@@ -181,7 +189,20 @@ export function growAgent(state: GameState, trigger: AgentGrowthTrigger, note: s
 function initiativeCandidates(state: GameState): Array<Omit<AgentInitiative, 'id' | 'status' | 'createdAt'>> {
   const pendingProjection = state.projections.find((item) => !item.completed)
   const latestArt = state.arts[0]
+  const lastChoice = state.storyChoices[0]
+  const chosenPath = lastChoice
+    ? STORY_CHAPTERS[lastChoice.chapterIndex]?.choices.find((item) => item.id === lastChoice.choiceId)
+    : undefined
   const candidates: Array<Omit<AgentInitiative, 'id' | 'status' | 'createdAt'>> = []
+
+  if (lastChoice && chosenPath) {
+    candidates.push({
+      title: `把“${lastChoice.label}”再变真一点`,
+      reason: '这是你亲自在主线里选过的走法。人格不该只记住台词，我想看看它在现实里是否也能救到你。',
+      action: chosenPath.note,
+      source: 'goal',
+    })
+  }
 
   if (pendingProjection) {
     candidates.push({
@@ -301,6 +322,122 @@ export function getRealm(xp: number) {
   const progress = Math.min(100, Math.round((progressValue / span) * 100))
   const layer = Math.min(9, Math.max(1, Math.floor(progress / 11.12) + 1))
   return { realm, next, index, progress, layer, remaining: next ? Math.max(0, next.threshold - xp) : 0 }
+}
+
+export interface CultivationDirective {
+  id: string
+  kicker: string
+  title: string
+  detail: string
+  cta: string
+  reward: string
+  minutes: number
+  target: TabId | 'story' | 'quest'
+  questId?: string
+  progress: string
+}
+
+export function getCultivationDirective(state: GameState): CultivationDirective {
+  const chapter = STORY_CHAPTERS[Math.min(state.storyIndex, STORY_CHAPTERS.length - 1)]
+  const chapterCleared = state.clearedStoryChapters.includes(chapter.index)
+  const allCleared = state.clearedStoryChapters.length >= STORY_CHAPTERS.length
+  const pendingProjection = state.projections.find((item) => !item.completed)
+  const questDone = (id: string) => Boolean(state.quests.find((item) => item.id === id)?.completed)
+
+  if (!chapterCleared && state.xp >= chapter.requirement) {
+    return {
+      id: `story-${chapter.index}`,
+      kicker: '主线已就绪',
+      title: `进入「${chapter.title.replace(/^.*?：/, '')}」`,
+      detail: `超我已抵达${chapter.scene}。这次由你选择，他用哪一种方式破劫。`,
+      cta: '入劫 · 继续故事',
+      reward: `${chapter.reward} · 消耗 2 命火`,
+      minutes: 3,
+      target: 'story',
+      progress: `七劫 ${state.clearedStoryChapters.length} / ${STORY_CHAPTERS.length}`,
+    }
+  }
+
+  if (!questDone('observe')) {
+    return {
+      id: 'observe',
+      kicker: chapterCleared ? '先稳住命火' : '主线修为不足',
+      title: '先说出：我现在有点……',
+      detail: '不用分析原因。闭眼三息，只把此刻的感觉说成人话。',
+      cta: '现在照见本心',
+      reward: '愿力 +12 · 修为 +18',
+      minutes: 1,
+      target: 'quest',
+      questId: 'observe',
+      progress: `距下一劫还差 ${Math.max(0, chapter.requirement - state.xp)} 修为`,
+    }
+  }
+
+  if (!state.knowledge.length || !questDone('learn')) {
+    return {
+      id: 'learn',
+      kicker: '超我正在等一味法',
+      title: state.knowledge.length ? '再投一段真正有用的内容' : '把一段书摘、笔记或困境扔给他',
+      detail: '他不会让你背下来，只会从中炼出一门今天能用的神通。',
+      cta: '去经阁 · 投卷炼法',
+      reward: '炼成专属功法 · 修为 +18',
+      minutes: 3,
+      target: 'library',
+      progress: `已悟 ${state.arts.length} 门神通`,
+    }
+  }
+
+  if (pendingProjection || !questDone('act')) {
+    return {
+      id: 'act',
+      kicker: '神通正在镜门另一侧',
+      title: pendingProjection?.title || '让一门神通真正落地',
+      detail: pendingProjection?.action || '选一件五分钟内能完成的小事，让彼岸的修为回到你身上。',
+      cta: '开镜门 · 接住一步',
+      reward: '能力 +10 · 命火 +1',
+      minutes: 5,
+      target: 'mirror',
+      progress: `${state.projections.filter((item) => item.completed).length} 次神通已归身`,
+    }
+  }
+
+  if (allCleared) {
+    return {
+      id: 'after-story',
+      kicker: '七劫已圆满',
+      title: '今天，让超我认真听你一件事',
+      detail: '主线结束不是毕业。把现实里正在发生的困境交给他，让他继续作为你的同行教练。',
+      cta: '向超我问道',
+      reward: '形成新的专属投射',
+      minutes: 3,
+      target: 'mirror',
+      progress: '人间修行 · 持续更新',
+    }
+  }
+
+  return {
+    id: 'destiny',
+    kicker: '今日三修已成',
+    title: `去看下一劫：${chapter.enemy}`,
+    detail: `还差 ${Math.max(0, chapter.requirement - state.xp)} 修为。你可以先看清心魔，再决定明天怎样走。`,
+    cta: '查看七劫天路',
+    reward: '看清主线与下一境界',
+    minutes: 1,
+    target: 'destiny',
+    progress: `七劫 ${state.clearedStoryChapters.length} / ${STORY_CHAPTERS.length}`,
+  }
+}
+
+export function getPersonalDestinyLine(state: GameState) {
+  const lastChoice = state.storyChoices[0]
+  const vowLine = state.primeVow === '行动'
+    ? '你最珍贵的不是永远有动力，而是没动力时仍肯做一点。'
+    : state.primeVow === '自由'
+      ? '我不会替你决定人生，我只替你守住还能选择的那一刻。'
+      : '你不用马上想明白一切。先看见自己，我们就还没有输。'
+  return lastChoice
+    ? `${state.playerName}，我记得你在上一劫选择了“${lastChoice.label}”。${vowLine}`
+    : `${state.playerName}，我会按“${state.primeVow}”这道本命愿替你修行。${vowLine}`
 }
 
 function firstThought(content: string) {
