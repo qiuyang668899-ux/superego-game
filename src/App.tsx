@@ -6,6 +6,7 @@ import {
   BookOpenText,
   BrainCircuit,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleEllipsis,
   Compass,
@@ -19,9 +20,12 @@ import {
   Home,
   Info,
   LibraryBig,
+  List,
   LockKeyhole,
   Menu,
   MessageCircleMore,
+  Minus,
+  Moon,
   Orbit,
   Play,
   Plus,
@@ -33,6 +37,7 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
+  Sun,
   Swords,
   Target,
   Trophy,
@@ -61,7 +66,8 @@ import {
 import type { CanonEntry, CanonFamily } from './scriptureData'
 import type { CultivationArt, GameState, KnowledgeType, TabId } from './types'
 
-const AVATAR_PATH = `${import.meta.env.BASE_URL}assets/superego-avatar.png`
+const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`
+const AVATAR_PATH = `${ASSET_BASE}superego-avatar.jpg`
 
 const tabItems: Array<{ id: TabId; label: string; note: string; icon: typeof Home }> = [
   { id: 'cave', label: '灵台', note: '超我代修', icon: Home },
@@ -108,6 +114,64 @@ function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value))
 }
 
+const TRADITIONAL_CHARACTERS: Record<string, string> = {
+  万: '萬', 与: '與', 专: '專', 业: '業', 东: '東', 丝: '絲', 丢: '丟', 书: '書', 争: '爭', 于: '於', 云: '雲', 亚: '亞', 产: '產', 亲: '親', 从: '從', 仓: '倉', 仪: '儀', 众: '眾', 优: '優', 会: '會', 体: '體', 余: '餘', 关: '關', 兴: '興', 养: '養', 内: '內', 决: '決', 净: '淨', 几: '幾', 击: '擊', 别: '別', 动: '動', 势: '勢', 华: '華', 单: '單', 卷: '卷', 历: '歷', 压: '壓', 发: '發', 变: '變', 叶: '葉', 后: '後', 听: '聽', 启: '啟', 员: '員', 问: '問', 园: '園', 国: '國', 图: '圖', 场: '場', 坚: '堅', 境: '境', 处: '處', 复: '復', 头: '頭', 学: '學', 实: '實', 对: '對', 将: '將', 层: '層', 岁: '歲', 师: '師', 带: '帶', 并: '並', 应: '應', 开: '開', 异: '異', 张: '張', 强: '強', 归: '歸', 当: '當', 录: '錄', 径: '徑', 忆: '憶', 总: '總', 恶: '惡', 愿: '願', 戏: '戲', 报: '報', 择: '擇', 拥: '擁', 换: '換', 据: '據', 效: '效', 数: '數', 断: '斷', 无: '無', 时: '時', 术: '術', 来: '來', 条: '條', 极: '極', 构: '構', 标: '標', 树: '樹', 样: '樣', 检: '檢', 权: '權', 欢: '歡', 步: '步', 气: '氣', 汉: '漢', 沟: '溝', 济: '濟', 测: '測', 炼: '煉', 为: '為', 照: '照', 爱: '愛', 现: '現', 环: '環', 画: '畫', 盘: '盤', 着: '著', 礼: '禮', 离: '離', 种: '種', 稳: '穩', 练: '練', 经: '經', 统: '統', 继: '繼', 续: '續', 缘: '緣', 罗: '羅', 义: '義', 习: '習', 观: '觀', 觉: '覺', 览: '覽', 让: '讓', 论: '論', 证: '證', 译: '譯', 话: '話', 读: '讀', 调: '調', 谓: '謂', 谢: '謝', 识: '識', 资: '資', 践: '踐', 车: '車', 转: '轉', 过: '過', 还: '還', 进: '進', 选: '選', 道: '道', 长: '長', 间: '間', 阅: '閱', 难: '難', 风: '風', 验: '驗', 龙: '龍', 鸠: '鳩', 鸣: '鳴',
+}
+
+function toTraditional(text: string) {
+  return [...text].map((character) => TRADITIONAL_CHARACTERS[character] || character).join('')
+}
+
+function canonReaderChapters(entry: CanonEntry) {
+  return [
+    {
+      id: 'opening',
+      index: '卷首',
+      title: '先入原典，再听人话',
+      sourceLabel: '原典摘录',
+      source: [entry.excerpt],
+      guideLabel: '超我导读',
+      guide: [entry.summary],
+    },
+    {
+      id: 'dao',
+      index: '第一重',
+      title: '观其道 · 它怎样理解世界',
+      sourceLabel: '一道',
+      source: [entry.dao],
+      guideLabel: '说人话',
+      guide: [`这部书先让你换一个角度看问题：${entry.dao}`],
+    },
+    {
+      id: 'fa',
+      index: '第二重',
+      title: '炼其法 · 可以反复使用的方法',
+      sourceLabel: '三法',
+      source: entry.fa,
+      guideLabel: '怎么用',
+      guide: entry.fa.map((item) => `遇到相似处境时，可以先试着：${item}。`),
+    },
+    {
+      id: 'shu',
+      index: '第三重',
+      title: '投其术 · 今天就能显化的一步',
+      sourceLabel: '三术',
+      source: entry.shu,
+      guideLabel: '超我投影',
+      guide: entry.shu.map((item) => `不必全做。今天只选一件：${item}。`),
+    },
+    {
+      id: 'closing',
+      index: '卷末',
+      title: '把书合上，让法开始活',
+      sourceLabel: '本卷信息',
+      source: [`${entry.era} · ${entry.author}`, `${entry.volumes} · 预计导读 ${entry.readingMinutes} 分钟`],
+      guideLabel: '阅读提醒',
+      guide: ['这是一份应用内先导读本。它帮你找到入口、读懂一层、带走一步；完整原典仍以来源版本为准。'],
+    },
+  ]
+}
+
 function App() {
   const [game, setGame] = useState<GameState>(() => ({ ...loadGame(), activeTab: 'cave' }))
   const [toast, setToast] = useState('')
@@ -121,6 +185,17 @@ function App() {
   const previousRealm = useRef(getRealm(game.xp).index)
 
   useEffect(() => saveGame(game), [game])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      ;['scene-lingtai.jpg', 'scene-library.jpg', 'scene-destiny.jpg', 'scene-mirror.jpg', 'superego-avatar.jpg'].forEach((file) => {
+        const image = new Image()
+        image.decoding = 'async'
+        image.src = `${ASSET_BASE}${file}`
+      })
+    }, 180)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const cycle = () => setGame((current) => runAutonomousCycle(current))
@@ -347,7 +422,7 @@ function App() {
 function AmbientWorld({ activeTab }: { activeTab: TabId }) {
   return (
     <div className="ambient-world" aria-hidden="true">
-      <div key={activeTab} className={`scene-backdrop scene-backdrop-${activeTab}`} />
+      <div className={`scene-backdrop scene-backdrop-${activeTab}`} />
       <div className="scene-vignette" />
       <div className="stars stars-one" />
       <div className="stars stars-two" />
@@ -512,7 +587,7 @@ function StatMeter({ label, value, color, icon, inverse }: { label: string; valu
   )
 }
 
-function CanonVault({ game, patchGame, onStudy }: { game: GameState; patchGame: (value: Partial<GameState> | ((current: GameState) => GameState)) => void; onStudy: (entry: CanonEntry) => void }) {
+function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; patchGame: (value: Partial<GameState> | ((current: GameState) => GameState)) => void; onStudy: (entry: CanonEntry) => void; onRead: (entry: CanonEntry) => void }) {
   const [family, setFamily] = useState<'全部' | CanonFamily>('全部')
   const [tradition, setTradition] = useState('全部')
   const [query, setQuery] = useState('')
@@ -574,6 +649,7 @@ function CanonVault({ game, patchGame, onStudy }: { game: GameState; patchGame: 
                   <span><small>{entry.tradition} · {entry.volumes}</small><b>{entry.title}</b><em>{entry.subtitle}</em></span>
                   {entry.sourceCode && <i>{entry.sourceCode}</i>}
                 </button>
+                <button className="canon-book-open" aria-label={`阅读${entry.title}`} onClick={() => onRead(entry)}><BookOpenText size={13} /><span>阅读</span></button>
                 <button className={`canon-bookmark ${game.canonBookmarks.includes(entry.id) ? 'active' : ''}`} aria-label={`${game.canonBookmarks.includes(entry.id) ? '取消收藏' : '收藏'}${entry.title}`} onClick={() => toggleBookmark(entry.id)}><Bookmark size={13} /></button>
               </article>
             )) : <div className="canon-empty"><Search size={24} /><b>没有找到这部经</b><p>换一个关键词，或先回到“全部”。</p></div>}
@@ -595,7 +671,8 @@ function CanonVault({ game, patchGame, onStudy }: { game: GameState; patchGame: 
           </div>
           <div className="canon-tags">{selected.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div>
           <div className="canon-reader-actions">
-            <button onClick={() => onStudy(selected)}><BrainCircuit size={16} />投入灵炉 · 助他参悟</button>
+            <button onClick={() => onRead(selected)}><BookOpenText size={16} />入卷阅读</button>
+            <button className="secondary" onClick={() => onStudy(selected)}><BrainCircuit size={16} />投入灵炉</button>
             {selected.sourceUrl && <a href={selected.sourceUrl} target="_blank" rel="noreferrer">{selected.sourceLabel}{selected.sourceCode ? ` · ${selected.sourceCode}` : ''}<ExternalLink size={13} /></a>}
           </div>
           <small className="canon-reading-time">预计参悟 {selected.readingMinutes} 分钟 · 本页“道法术”为《超我》原创炼法辅助，不代替原典与专业解释。</small>
@@ -605,12 +682,129 @@ function CanonVault({ game, patchGame, onStudy }: { game: GameState; patchGame: 
   )
 }
 
+type ReaderMode = 'parallel' | 'source' | 'guide'
+
+function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: CanonEntry; initialProgress: number; onClose: (progress: number) => void; onStudy: (entry: CanonEntry) => void }) {
+  const chapters = useMemo(() => canonReaderChapters(entry), [entry])
+  const [mode, setMode] = useState<ReaderMode>('parallel')
+  const [fontSize, setFontSize] = useState(18)
+  const [traditional, setTraditional] = useState(false)
+  const [paperMode, setPaperMode] = useState(false)
+  const [tocOpen, setTocOpen] = useState(false)
+  const [progress, setProgress] = useState(initialProgress)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const display = (text: string) => traditional ? toTraditional(text) : text
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const timer = window.setTimeout(() => {
+      const element = scrollRef.current
+      if (!element || initialProgress <= 0) return
+      const available = Math.max(0, element.scrollHeight - element.clientHeight)
+      element.scrollTop = available * initialProgress / 100
+    }, 60)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.clearTimeout(timer)
+    }
+  }, [entry.id, initialProgress])
+
+  const jumpTo = (chapterId: string) => {
+    const container = scrollRef.current
+    const target = container?.querySelector<HTMLElement>(`[data-reader-chapter="${chapterId}"]`)
+    if (!container || !target) return
+    container.scrollTo({ top: Math.max(0, target.offsetTop - 24), behavior: 'smooth' })
+    setTocOpen(false)
+  }
+
+  const updateProgress = () => {
+    const element = scrollRef.current
+    if (!element) return
+    const available = element.scrollHeight - element.clientHeight
+    setProgress(available <= 0 ? 100 : Math.round(element.scrollTop / available * 100))
+  }
+
+  return (
+    <div className={`canon-reader-layer ${paperMode ? 'paper' : 'ink'}`} role="dialog" aria-modal="true" aria-label={`阅读${entry.title}`}>
+      <header className="reader-topbar">
+        <button className="reader-back" onClick={() => onClose(progress)} aria-label="退出阅读"><ChevronLeft size={18} /><span>藏经阁</span></button>
+        <div className="reader-book-meta"><small>{display(entry.tradition)} · {display(entry.era)}</small><b>{display(entry.title)}</b><span>{display(entry.author)}</span></div>
+        <div className="reader-tools">
+          <button onClick={() => setTocOpen((value) => !value)} aria-label="打开目录"><List size={16} /></button>
+          <button onClick={() => setTraditional((value) => !value)} aria-label="切换简繁">{traditional ? '繁' : '简'}</button>
+          <button onClick={() => setFontSize((value) => Math.max(15, value - 1))} aria-label="减小字号"><Minus size={15} /></button>
+          <span>{fontSize}</span>
+          <button onClick={() => setFontSize((value) => Math.min(24, value + 1))} aria-label="增大字号"><Plus size={15} /></button>
+          <button onClick={() => setPaperMode((value) => !value)} aria-label="切换阅读主题">{paperMode ? <Moon size={15} /> : <Sun size={15} />}</button>
+          <button onClick={() => onClose(progress)} aria-label="关闭阅读"><X size={17} /></button>
+        </div>
+      </header>
+
+      <div className="reader-progress-line"><i style={{ width: `${progress}%` }} /></div>
+
+      <div className="reader-frame">
+        <aside className={`reader-toc ${tocOpen ? 'open' : ''}`}>
+          <div><span>目录</span><small>{display(entry.volumes)} · {progress}%</small></div>
+          <button className="reader-toc-close" onClick={() => setTocOpen(false)} aria-label="关闭目录"><X size={16} /></button>
+          <nav>
+            {chapters.map((chapter) => <button key={chapter.id} onClick={() => jumpTo(chapter.id)}><small>{display(chapter.index)}</small><span>{display(chapter.title)}</span></button>)}
+          </nav>
+          <div className="reader-source-note"><ShieldCheck size={14} /><p>应用内为先导读本；完整原典、版本与译文以来源页为准。</p></div>
+          {entry.sourceUrl && <a href={entry.sourceUrl} target="_blank" rel="noreferrer">查看原典来源<ExternalLink size={13} /></a>}
+        </aside>
+
+        {tocOpen && <button className="reader-toc-scrim" aria-label="关闭目录" onClick={() => setTocOpen(false)} />}
+
+        <main className="reader-scroll" ref={scrollRef} onScroll={updateProgress} style={{ '--reader-font-size': `${fontSize}px` } as React.CSSProperties}>
+          <article className="reader-manuscript">
+            <header className="reader-title-page">
+              <span>{display(entry.family)} · {display(entry.tradition)}</span>
+              <h1>{display(entry.title)}</h1>
+              <p>{display(entry.subtitle)}</p>
+              <div><b>{display(entry.author)}</b><small>{display(entry.era)} · {display(entry.volumes)} · 约 {entry.readingMinutes} 分钟</small></div>
+              <em>应用内先导读本</em>
+            </header>
+
+            <div className="reader-mode-tabs" aria-label="阅读方式">
+              {([['parallel', '对照'], ['source', '摘录'], ['guide', '导读']] as Array<[ReaderMode, string]>).map(([value, label]) => <button key={value} className={mode === value ? 'active' : ''} onClick={() => setMode(value)}>{label}</button>)}
+            </div>
+
+            {chapters.map((chapter) => (
+              <section className="reader-chapter" data-reader-chapter={chapter.id} key={chapter.id}>
+                <span>{display(chapter.index)}</span>
+                <h2>{display(chapter.title)}</h2>
+                {mode !== 'guide' && <div className="reader-source-block"><small>{display(chapter.sourceLabel)}</small>{chapter.source.map((paragraph) => <p key={paragraph}>{display(paragraph)}</p>)}</div>}
+                {mode !== 'source' && <div className="reader-guide-block"><small>{display(chapter.guideLabel)}</small>{chapter.guide.map((paragraph) => <p key={paragraph}>{display(paragraph)}</p>)}</div>}
+              </section>
+            ))}
+
+            <footer className="reader-ending">
+              <span>读至此处 · 不必全懂</span>
+              <h2>合上书，把一法带回现实</h2>
+              <p>让超我继续参悟；你只需要接住它炼成的下一步。</p>
+              <button onClick={() => { onStudy(entry); onClose(progress) }}><BrainCircuit size={17} />投入万法灵炉</button>
+            </footer>
+          </article>
+        </main>
+      </div>
+
+      <footer className="reader-bottom-bar">
+        <span>已读 {progress}%</span>
+        <i><b style={{ width: `${progress}%` }} /></i>
+        <button onClick={() => { onStudy(entry); onClose(progress) }}><BrainCircuit size={15} />交给超我炼法</button>
+      </footer>
+    </div>
+  )
+}
+
 function LibraryScreen({ game, patchGame, onProject, onShop, setToast }: { game: GameState; patchGame: (value: Partial<GameState> | ((current: GameState) => GameState)) => void; onProject: (art: CultivationArt) => void; onShop: () => void; setToast: (value: string) => void }) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState<KnowledgeType>('笔记')
   const [content, setContent] = useState('')
   const [distilling, setDistilling] = useState(false)
   const [result, setResult] = useState<CultivationArt | null>(null)
+  const [readingEntry, setReadingEntry] = useState<CanonEntry | null>(null)
   const forgeRef = useRef<HTMLFormElement>(null)
 
   const submit = (event: FormEvent) => {
@@ -661,6 +855,18 @@ function LibraryScreen({ game, patchGame, onProject, onShop, setToast }: { game:
     setToast(`《${entry.title}》已投入万法灵炉 · 等你开炉参悟`)
   }
 
+  const openReader = (entry: CanonEntry) => {
+    setReadingEntry(entry)
+    patchGame((current) => ({ ...current, canonHistory: [entry.id, ...current.canonHistory.filter((id) => id !== entry.id)].slice(0, 30) }))
+  }
+
+  const closeReader = (progress: number) => {
+    if (readingEntry) {
+      patchGame((current) => ({ ...current, canonProgress: { ...current.canonProgress, [readingEntry.id]: progress } }))
+    }
+    setReadingEntry(null)
+  }
+
   return (
     <div className="screen library-screen">
       <header className="screen-header">
@@ -668,7 +874,7 @@ function LibraryScreen({ game, patchGame, onProject, onShop, setToast }: { game:
         <div className="header-resource"><BrainCircuit size={22} /><span>已参悟 / 收藏</span><b>{game.canonHistory.length}<small> / {game.canonBookmarks.length}</small></b></div>
       </header>
 
-      <CanonVault game={game} patchGame={patchGame} onStudy={studyCanon} />
+      <CanonVault game={game} patchGame={patchGame} onStudy={studyCanon} onRead={openReader} />
 
       <div className="library-layout">
         <form ref={forgeRef} className="distill-forge glass-panel" onSubmit={submit}>
@@ -719,6 +925,8 @@ function LibraryScreen({ game, patchGame, onProject, onShop, setToast }: { game:
           </div>
         </div>
       )}
+
+      {readingEntry && <CanonReader entry={readingEntry} initialProgress={game.canonProgress[readingEntry.id] || 0} onClose={closeReader} onStudy={studyCanon} />}
     </div>
   )
 }

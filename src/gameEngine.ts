@@ -75,6 +75,7 @@ export const DEFAULT_STATE: GameState = {
   ],
   canonBookmarks: [],
   canonHistory: [],
+  canonProgress: {},
 }
 
 function normalizeState(value: Partial<GameState>): GameState {
@@ -86,6 +87,7 @@ function normalizeState(value: Partial<GameState>): GameState {
     agentJournal: Array.isArray(value.agentJournal) ? value.agentJournal : DEFAULT_STATE.agentJournal,
     canonBookmarks: Array.isArray(value.canonBookmarks) ? value.canonBookmarks : DEFAULT_STATE.canonBookmarks,
     canonHistory: Array.isArray(value.canonHistory) ? value.canonHistory : DEFAULT_STATE.canonHistory,
+    canonProgress: value.canonProgress && typeof value.canonProgress === 'object' ? value.canonProgress : DEFAULT_STATE.canonProgress,
   }
   const energyPassed = Math.max(0, Date.now() - merged.lastEnergyAt)
   const recovered = Math.floor(energyPassed / (3 * 60 * 60 * 1000))

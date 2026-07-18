@@ -109,6 +109,7 @@ export interface GameState {
   agentJournal: AgentJournalEntry[]
   canonBookmarks: string[]
   canonHistory: string[]
+  canonProgress: Record<string, number>
 }
 
 export interface Realm {
