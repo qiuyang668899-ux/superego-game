@@ -24,9 +24,16 @@ function parseJsonArray(content) {
   const json = cleaned.startsWith('{') && cleaned.endsWith('}')
     ? cleaned
     : cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1)
-  const direct = JSON.parse(json)
-  if (Array.isArray(direct)) return direct
-  if (Array.isArray(direct.translations)) return direct.translations
+  try {
+    const direct = JSON.parse(json)
+    if (Array.isArray(direct)) return direct
+    if (Array.isArray(direct.translations)) return direct.translations
+  } catch {
+    const arrayStart = cleaned.indexOf('[', cleaned.indexOf('"translations"'))
+    const recoverable = arrayStart >= 0 ? cleaned.slice(arrayStart + 1) : ''
+    const recovered = [...recoverable.matchAll(/"((?:\\.|[^"\\])*)"/g)].map((match) => JSON.parse(`"${match[1]}"`))
+    if (recovered.length) return recovered
+  }
   throw new Error('The model response did not contain a translations array')
 }
 
@@ -43,10 +50,28 @@ async function translateBatch(paragraphs) {
       model: MODEL,
       temperature: 0.1,
       max_tokens: 6000,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'canon_translations',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              translations: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+            required: ['translations'],
+            additionalProperties: false,
+          },
+        },
+      },
       messages: [
         {
           role: 'system',
-          content: '你是《超我》藏经阁的严谨古籍译者。把文言与汉文典籍逐段译成清楚、自然、忠实的现代汉语。保留人名、概念与宗教专名，不添加原文没有的因果、神迹、评价或劝诫；咒语只说明“音译咒语，保留原音”，不要编造字面意义。输入有几段，输出必须正好有几段。只输出 JSON：{"translations":["第一段译文","第二段译文"]}。',
+          content: '你是《超我》藏经阁的严谨古籍译者。把文言与汉文典籍逐段译成今天普通读者一遍就能懂的现代汉语，不要只做繁简转换，也不要照抄文言句式；长句可以拆成短句。忠实保留原意、人名、概念与宗教专名，不添加原文没有的因果、神迹、评价或劝诫；咒语只说明“音译咒语，保留原音”，不要编造字面意义。输入有几段，输出必须正好有几段。',
         },
         {
           role: 'user',
