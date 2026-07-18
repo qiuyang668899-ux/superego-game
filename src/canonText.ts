@@ -74,7 +74,12 @@ export function hasFullCanon(id: string) {
 }
 
 async function loadJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`, { signal })
+  const canonicalPath = `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
+  const separator = canonicalPath.includes('?') ? '&' : '?'
+  const response = await fetch(`${canonicalPath}${separator}fresh=${Date.now()}`, {
+    signal,
+    cache: 'no-store',
+  })
   if (!response.ok) throw new Error(`经文载入失败（${response.status}）`)
   return response.json() as Promise<T>
 }
