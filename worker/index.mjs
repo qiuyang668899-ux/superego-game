@@ -1,14 +1,16 @@
 import { createCoachReply } from '../server/coach.mjs'
+import { anonymousIdentity, checkCoachRateLimit } from '../db/rateLimit.mjs'
 
 const MAX_BODY = 96 * 1024
 
-function json(body, status = 200) {
+function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      ...headers,
     },
   })
 }
@@ -37,11 +39,28 @@ export default {
       }
 
       if (request.method === 'POST' && url.pathname === '/api/coach') {
+        const origin = request.headers.get('Origin')
+        if (origin && origin !== url.origin) return json({ error: '只接受来自《超我》本身的问道请求' }, 403)
+
+        const identity = await anonymousIdentity(request, env.RATE_LIMIT_SALT)
+        const limit = Math.max(5, Math.min(120, Number(env.COACH_RATE_LIMIT) || 30))
+        const allowance = await checkCoachRateLimit(env.DB, identity, { limit })
+        if (!allowance.allowed) {
+          return json({ error: '这一炷香里问得有些密了，本地心诀会先接住你；稍后再开智能心核。' }, 429, {
+            'Retry-After': String(allowance.retryAfterSeconds),
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': '0',
+          })
+        }
+
         const result = await createCoachReply(await readJson(request), {
           apiKey: env.DEEPSEEK_API_KEY,
           model: env.DEEPSEEK_MODEL,
         })
-        return json(result)
+        return json(result, 200, {
+          'X-RateLimit-Limit': String(limit),
+          'X-RateLimit-Remaining': String(allowance.remaining),
+        })
       }
 
       return env.ASSETS.fetch(request)

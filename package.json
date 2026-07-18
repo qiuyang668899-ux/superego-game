@@ -9,7 +9,7 @@
     "build:sites": "node scripts/build-sites.mjs",
     "canon:import": "node scripts/import-canon.mjs",
     "canon:translate": "node scripts/translate-canon.mjs",
-    "test": "node --test server/coach.test.mjs",
+    "test": "node --test server/*.test.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "start:local": "npm run build && env -u DEEPSEEK_API_KEY node --env-file-if-exists=.env server.mjs",
     "start:static": "npm run build && vite preview --host 127.0.0.1 --port 4175 --strictPort"

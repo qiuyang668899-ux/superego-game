@@ -9,7 +9,7 @@ const DIST = resolve(ROOT, 'dist')
 const PORT = Number(process.env.PORT || 4175)
 const HOST = process.env.HOST || '127.0.0.1'
 const MAX_BODY = 96 * 1024
-const RATE_LIMIT = Number(process.env.COACH_RATE_LIMIT || 40)
+const RATE_LIMIT = Number(process.env.COACH_RATE_LIMIT || 30)
 const rateBuckets = new Map()
 
 const mimeTypes = {

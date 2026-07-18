@@ -1159,10 +1159,11 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
         memoryNotes = result.memoryNotes
         setHeartStatus('online')
       }
-    } catch {
+    } catch (error) {
       response = coachReply(text, game)
       setHeartStatus('local')
-      setToast('云端心核暂时未连接，已由本地心诀先接住你')
+      const detail = error instanceof Error ? error.message : ''
+      setToast(detail.includes('问得有些密') ? detail : '云端心核暂时未连接，已由本地心诀先接住你')
     } finally {
       patchGame((current) => {
         const known = new Set(current.coachMemories.map((item) => item.text))
