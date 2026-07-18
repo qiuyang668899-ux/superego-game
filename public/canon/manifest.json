@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-18T08:03:59.927Z",
+  "generatedAt": "2026-07-18T08:31:52.804Z",
   "entries": [
     {
       "id": "analects",
@@ -71,8 +71,8 @@
       "indexFile": "canon/heart-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 1285,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "diamond-sutra",
