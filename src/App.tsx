@@ -49,6 +49,7 @@ import {
 } from 'lucide-react'
 import { DAILY_QUESTS, KNOWLEDGE_SAMPLES, REALMS, SHOP_PACKAGES, STORY_CHAPTERS, VOWS } from './gameData'
 import { CANON_ENTRIES, CANON_FAMILIES } from './scriptureData'
+import { hasFullCanon, loadCanonIndex, loadCanonSection } from './canonText'
 import {
   buildProjection,
   acceptAgentInitiative,
@@ -64,6 +65,7 @@ import {
   saveGame,
 } from './gameEngine'
 import type { CanonEntry, CanonFamily } from './scriptureData'
+import type { CanonDocumentIndex, CanonTextSection } from './canonText'
 import type { CultivationArt, GameState, KnowledgeType, TabId } from './types'
 
 const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`
@@ -630,7 +632,7 @@ function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; pat
         })}
       </nav>
 
-      <div className="canon-license-note"><ShieldCheck size={14} /><p><b>来源与授权：</b>佛典以 CBETA 经号和在线阅读入口作为权威索引；本地仅保存短摘与原创“道法术”导读。完整文本、译文和商业使用须按各来源授权单独核验。</p><a href="https://cbeta.org/faq" target="_blank" rel="noreferrer">查看 CBETA 说明<ExternalLink size={12} /></a></div>
+      <div className="canon-license-note"><ShieldCheck size={14} /><p><b>经文永久免费：</b>七部佛典已按 CBETA 经号收入完整原典，不设付费墙、不消耗命火。现代译文由《超我》分批生成并持续校勘；收费功能与经文阅读严格分开。</p><a href="https://www.cbeta.org/copyright" target="_blank" rel="noreferrer">查看 CBETA 授权<ExternalLink size={12} /></a></div>
 
       <div className="canon-workbench">
         <aside className="canon-traditions">
@@ -647,7 +649,7 @@ function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; pat
                 <button className="canon-book-main" onClick={() => choose(entry)}>
                   <span className={`canon-family-seal family-${entry.family}`}>{entry.family}</span>
                   <span><small>{entry.tradition} · {entry.volumes}</small><b>{entry.title}</b><em>{entry.subtitle}</em></span>
-                  {entry.sourceCode && <i>{entry.sourceCode}</i>}
+                  {hasFullCanon(entry.id) ? <i>全文</i> : entry.sourceCode && <i>{entry.sourceCode}</i>}
                 </button>
                 <button className="canon-book-open" aria-label={`阅读${entry.title}`} onClick={() => onRead(entry)}><BookOpenText size={13} /><span>阅读</span></button>
                 <button className={`canon-bookmark ${game.canonBookmarks.includes(entry.id) ? 'active' : ''}`} aria-label={`${game.canonBookmarks.includes(entry.id) ? '取消收藏' : '收藏'}${entry.title}`} onClick={() => toggleBookmark(entry.id)}><Bookmark size={13} /></button>
@@ -685,30 +687,74 @@ function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; pat
 type ReaderMode = 'parallel' | 'source' | 'guide'
 
 function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: CanonEntry; initialProgress: number; onClose: (progress: number) => void; onStudy: (entry: CanonEntry) => void }) {
-  const chapters = useMemo(() => canonReaderChapters(entry), [entry])
+  const guideChapters = useMemo(() => canonReaderChapters(entry), [entry])
   const [mode, setMode] = useState<ReaderMode>('parallel')
   const [fontSize, setFontSize] = useState(18)
   const [traditional, setTraditional] = useState(false)
   const [paperMode, setPaperMode] = useState(false)
   const [tocOpen, setTocOpen] = useState(false)
   const [progress, setProgress] = useState(initialProgress)
+  const [document, setDocument] = useState<CanonDocumentIndex | null>(null)
+  const [section, setSection] = useState<CanonTextSection | null>(null)
+  const [sectionIndex, setSectionIndex] = useState(0)
+  const [loading, setLoading] = useState(hasFullCanon(entry.id))
+  const [readerError, setReaderError] = useState('')
+  const [retrySectionIndex, setRetrySectionIndex] = useState<number | null>(null)
+  const [readerQuery, setReaderQuery] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sectionCache = useRef(new Map<string, CanonTextSection>())
   const display = (text: string) => traditional ? toTraditional(text) : text
+  const fullText = Boolean(document && section)
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (!hasFullCanon(entry.id)) return
+    const controller = new AbortController()
+    setLoading(true)
+    setReaderError('')
+    setDocument(null)
+    setSection(null)
+    sectionCache.current.clear()
+    loadCanonIndex(entry.id, controller.signal)
+      .then(async (nextDocument) => {
+        const nextIndex = Math.min(
+          nextDocument.sections.length - 1,
+          Math.max(0, Math.floor(initialProgress / 100 * nextDocument.sections.length)),
+        )
+        const descriptor = nextDocument.sections[nextIndex]
+        const nextSection = await loadCanonSection(entry.id, descriptor.file, controller.signal)
+        sectionCache.current.set(descriptor.file, nextSection)
+        setDocument(nextDocument)
+        setSectionIndex(nextIndex)
+        setSection(nextSection)
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setReaderError(error instanceof Error ? error.message : '经文暂时没有载入，请稍后重试。')
+      })
+      .finally(() => setLoading(false))
+    return () => controller.abort()
+  }, [entry.id, initialProgress])
+
+  useEffect(() => {
+    const previousOverflow = globalThis.document.body.style.overflow
+    globalThis.document.body.style.overflow = 'hidden'
     const timer = window.setTimeout(() => {
       const element = scrollRef.current
       if (!element || initialProgress <= 0) return
-      const available = Math.max(0, element.scrollHeight - element.clientHeight)
-      element.scrollTop = available * initialProgress / 100
+      if (document) {
+        const sectionProgress = initialProgress / 100 * document.sections.length - sectionIndex
+        const available = Math.max(0, element.scrollHeight - element.clientHeight)
+        element.scrollTop = available * clamp(sectionProgress, 0, 1)
+      } else if (!hasFullCanon(entry.id)) {
+        const available = Math.max(0, element.scrollHeight - element.clientHeight)
+        element.scrollTop = available * initialProgress / 100
+      }
     }, 60)
     return () => {
-      document.body.style.overflow = previousOverflow
+      globalThis.document.body.style.overflow = previousOverflow
       window.clearTimeout(timer)
     }
-  }, [entry.id, initialProgress])
+  }, [entry.id, initialProgress, document, sectionIndex])
 
   const jumpTo = (chapterId: string) => {
     const container = scrollRef.current
@@ -718,12 +764,64 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
     setTocOpen(false)
   }
 
+  const openSection = async (nextIndex: number, force = false) => {
+    if (!document || nextIndex < 0 || nextIndex >= document.sections.length || (!force && nextIndex === sectionIndex)) {
+      setTocOpen(false)
+      return
+    }
+    const descriptor = document.sections[nextIndex]
+    setLoading(true)
+    setReaderError('')
+    setRetrySectionIndex(null)
+    try {
+      if (force) sectionCache.current.delete(descriptor.file)
+      const cached = sectionCache.current.get(descriptor.file)
+      const nextSection = cached || await loadCanonSection(entry.id, descriptor.file)
+      if (!cached) sectionCache.current.set(descriptor.file, nextSection)
+      setSectionIndex(nextIndex)
+      setSection(nextSection)
+      setReaderQuery('')
+      const nextProgress = Math.round(nextIndex / document.sections.length * 100)
+      setProgress(nextProgress)
+      requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = 0
+      })
+    } catch (error) {
+      setRetrySectionIndex(nextIndex)
+      setReaderError(error instanceof Error ? error.message : '这一卷暂时没有载入。')
+    } finally {
+      setLoading(false)
+      setTocOpen(false)
+    }
+  }
+
   const updateProgress = () => {
     const element = scrollRef.current
     if (!element) return
     const available = element.scrollHeight - element.clientHeight
-    setProgress(available <= 0 ? 100 : Math.round(element.scrollTop / available * 100))
+    const localProgress = available <= 0 ? 1 : clamp(element.scrollTop / available, 0, 1)
+    if (document) setProgress(Math.round((sectionIndex + localProgress) / document.sections.length * 100))
+    else setProgress(Math.round(localProgress * 100))
   }
+
+  const queryResults = useMemo(() => {
+    const value = readerQuery.trim()
+    if (!value || !section) return []
+    return section.original.reduce<Array<{ index: number; text: string }>>((results, paragraph, index) => {
+      const modern = section.modern[index] || ''
+      if ((paragraph.includes(value) || modern.includes(value)) && results.length < 20) results.push({ index, text: modern || paragraph })
+      return results
+    }, [])
+  }, [readerQuery, section])
+
+  const jumpToParagraph = (paragraphIndex: number) => {
+    const target = scrollRef.current?.querySelector<HTMLElement>(`[data-reader-paragraph="${paragraphIndex}"]`)
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setReaderQuery('')
+  }
+
+  const coverage = document ? Math.round(document.translationCoverage * 100) : 0
+  const currentDescriptor = document?.sections[sectionIndex]
 
   return (
     <div className={`canon-reader-layer ${paperMode ? 'paper' : 'ink'}`} role="dialog" aria-modal="true" aria-label={`阅读${entry.title}`}>
@@ -745,39 +843,75 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
 
       <div className="reader-frame">
         <aside className={`reader-toc ${tocOpen ? 'open' : ''}`}>
-          <div><span>目录</span><small>{display(entry.volumes)} · {progress}%</small></div>
+          <div><span>目录</span><small>{document ? `${document.sections.length} 卷/篇` : display(entry.volumes)} · {progress}%</small></div>
           <button className="reader-toc-close" onClick={() => setTocOpen(false)} aria-label="关闭目录"><X size={16} /></button>
           <nav>
-            {chapters.map((chapter) => <button key={chapter.id} onClick={() => jumpTo(chapter.id)}><small>{display(chapter.index)}</small><span>{display(chapter.title)}</span></button>)}
+            {document
+              ? document.sections.map((item, index) => <button className={sectionIndex === index ? 'active' : ''} key={item.id} onClick={() => void openSection(index)}><small>第 {index + 1} / {document.sections.length}</small><span>{display(item.title)}</span><em>{Math.round(item.translationCoverage * 100)}% 已译</em></button>)
+              : guideChapters.map((chapter) => <button key={chapter.id} onClick={() => jumpTo(chapter.id)}><small>{display(chapter.index)}</small><span>{display(chapter.title)}</span></button>)}
           </nav>
-          <div className="reader-source-note"><ShieldCheck size={14} /><p>应用内为先导读本；完整原典、版本与译文以来源页为准。</p></div>
-          {entry.sourceUrl && <a href={entry.sourceUrl} target="_blank" rel="noreferrer">查看原典来源<ExternalLink size={13} /></a>}
+          <div className="reader-source-note"><ShieldCheck size={14} /><p>{document ? document.source.notice : '这是应用内先导读本；完整原典、版本与译文以来源页为准。'}</p></div>
+          {(document?.source.url || entry.sourceUrl) && <a href={document?.source.url || entry.sourceUrl} target="_blank" rel="noreferrer">查看原典与授权<ExternalLink size={13} /></a>}
         </aside>
 
         {tocOpen && <button className="reader-toc-scrim" aria-label="关闭目录" onClick={() => setTocOpen(false)} />}
 
         <main className="reader-scroll" ref={scrollRef} onScroll={updateProgress} style={{ '--reader-font-size': `${fontSize}px` } as React.CSSProperties}>
           <article className="reader-manuscript">
-            <header className="reader-title-page">
+            {(!document || sectionIndex === 0) && <header className="reader-title-page">
               <span>{display(entry.family)} · {display(entry.tradition)}</span>
               <h1>{display(entry.title)}</h1>
               <p>{display(entry.subtitle)}</p>
-              <div><b>{display(entry.author)}</b><small>{display(entry.era)} · {display(entry.volumes)} · 约 {entry.readingMinutes} 分钟</small></div>
-              <em>应用内先导读本</em>
-            </header>
+              <div><b>{display(entry.author)}</b><small>{document ? `${document.originalCharacters.toLocaleString()} 字 · ${document.sections.length} 卷/篇` : `${display(entry.era)} · ${display(entry.volumes)} · 约 ${entry.readingMinutes} 分钟`}</small></div>
+              <em>{document ? '完整原典 · 经文永久免费' : '应用内先导读本'}</em>
+            </header>}
 
             <div className="reader-mode-tabs" aria-label="阅读方式">
-              {([['parallel', '对照'], ['source', '摘录'], ['guide', '导读']] as Array<[ReaderMode, string]>).map(([value, label]) => <button key={value} className={mode === value ? 'active' : ''} onClick={() => setMode(value)}>{label}</button>)}
+              {([['parallel', '原译对照'], ['source', document ? '原典全文' : '原典摘录'], ['guide', document ? '现代译文' : '超我导读']] as Array<[ReaderMode, string]>).map(([value, label]) => <button key={value} className={mode === value ? 'active' : ''} onClick={() => setMode(value)}>{label}</button>)}
+              {document && <label className="reader-search"><Search size={14} /><input value={readerQuery} onChange={(event) => setReaderQuery(event.target.value)} placeholder="在本卷中搜索" aria-label="在本卷中搜索" /></label>}
             </div>
 
-            {chapters.map((chapter) => (
+            {readerQuery && document && <div className="reader-search-results"><small>本卷找到 {queryResults.length} 处</small>{queryResults.length ? queryResults.map((result) => <button key={result.index} onClick={() => jumpToParagraph(result.index)}><b>{result.index + 1}</b><span>{display(result.text.slice(0, 72))}</span></button>) : <p>换一个词试试。</p>}</div>}
+
+            {loading && <div className="reader-loading"><RefreshCw size={22} /><b>正在展开经卷</b><p>长卷只载入你正在读的一卷，手机会更稳。</p></div>}
+            {readerError && <div className="reader-error"><b>这一卷没有展开</b><p>{readerError}</p><button onClick={() => document ? void openSection(retrySectionIndex ?? sectionIndex, true) : window.location.reload()}><RefreshCw size={14} />重试</button></div>}
+
+            {fullText && section && !loading ? (
+              <section className="reader-chapter reader-full-chapter">
+                <span>第 {sectionIndex + 1} / {document!.sections.length} · {currentDescriptor?.originalCharacters.toLocaleString()} 字</span>
+                <h2>{display(section.title)}</h2>
+                <div className={`reader-translation-state ${section.translationStatus}`}>
+                  <ShieldCheck size={15} />
+                  <p><b>原典全文已入阁</b><span>{section.translationStatus === 'complete' ? document!.translationLabel : `本书现代译文已完成 ${coverage}%，其余段落正在生成与校勘。原典始终可以完整阅读。`}</span></p>
+                </div>
+                <div className={`reader-paragraphs mode-${mode}`}>
+                  {section.original.map((paragraph, paragraphIndex) => {
+                    const modern = section.modern[paragraphIndex]?.trim()
+                    return (
+                      <article className="reader-pair" data-reader-paragraph={paragraphIndex} key={`${section.id}-${paragraphIndex}`}>
+                        {mode !== 'guide' && <div className="reader-source-block"><small>原典 · 第 {paragraphIndex + 1} 段</small><p>{display(paragraph)}</p></div>}
+                        {mode !== 'source' && (modern
+                          ? <div className="reader-guide-block"><small>现代译文</small><p>{display(modern)}</p></div>
+                          : <div className="reader-guide-block reader-translation-pending"><small>现代译文 · 校勘中</small><p>这段译文正在生成。你可以先读原典，完成后会自动补进同一位置。</p></div>)}
+                      </article>
+                    )
+                  })}
+                </div>
+                <div className="reader-section-nav">
+                  <button disabled={sectionIndex === 0} onClick={() => void openSection(sectionIndex - 1)}><ChevronLeft size={16} />上一卷</button>
+                  <span>{sectionIndex + 1} / {document!.sections.length}</span>
+                  <button disabled={sectionIndex === document!.sections.length - 1} onClick={() => void openSection(sectionIndex + 1)}>下一卷<ChevronRight size={16} /></button>
+                </div>
+                <div className="reader-license-card"><ShieldCheck size={16} /><p><b>{document!.source.label} · {document!.source.code || document!.edition}</b><span>{document!.source.license}</span><small>{document!.source.notice}</small></p></div>
+              </section>
+            ) : !hasFullCanon(entry.id) && !loading ? guideChapters.map((chapter) => (
               <section className="reader-chapter" data-reader-chapter={chapter.id} key={chapter.id}>
                 <span>{display(chapter.index)}</span>
                 <h2>{display(chapter.title)}</h2>
                 {mode !== 'guide' && <div className="reader-source-block"><small>{display(chapter.sourceLabel)}</small>{chapter.source.map((paragraph) => <p key={paragraph}>{display(paragraph)}</p>)}</div>}
                 {mode !== 'source' && <div className="reader-guide-block"><small>{display(chapter.guideLabel)}</small>{chapter.guide.map((paragraph) => <p key={paragraph}>{display(paragraph)}</p>)}</div>}
               </section>
-            ))}
+            )) : null}
 
             <footer className="reader-ending">
               <span>读至此处 · 不必全懂</span>

@@ -1,0 +1,63 @@
+name: Translate Canon in Batches
+
+on:
+  workflow_dispatch:
+    inputs:
+      book:
+        description: Canon id, or auto for the next unfinished book
+        required: true
+        default: auto
+        type: string
+      max_batches:
+        description: Translation requests in this run
+        required: true
+        default: '12'
+        type: string
+  schedule:
+    - cron: '23 */6 * * *'
+
+permissions:
+  contents: write
+  actions: write
+  models: read
+
+concurrency:
+  group: canon-translation
+  cancel-in-progress: false
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canon
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Translate the next batch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANON_TRANSLATION_MODEL: openai/gpt-4.1-mini
+        run: node scripts/translate-canon.mjs --book "${{ inputs.book || 'auto' }}" --max-batches "${{ inputs.max_batches || '12' }}"
+      - name: Save translated paragraphs
+        id: save
+        run: |
+          if git diff --quiet -- public/canon; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "superego-canon-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/canon
+          git commit -m "content: advance free canon translations"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Redeploy the free reader
+        if: steps.save.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-pages.yml --ref main
+

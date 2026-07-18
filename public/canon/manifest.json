@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-18T08:03:59.927Z",
+  "entries": [
+    {
+      "id": "analects",
+      "title": "论语",
+      "indexFile": "canon/analects/index.json",
+      "completeness": "full",
+      "originalCharacters": 20717,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "mencius",
+      "title": "孟子",
+      "indexFile": "canon/mencius/index.json",
+      "completeness": "full",
+      "originalCharacters": 43297,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "great-learning",
+      "title": "大学",
+      "indexFile": "canon/great-learning/index.json",
+      "completeness": "full",
+      "originalCharacters": 2354,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "doctrine-mean",
+      "title": "中庸",
+      "indexFile": "canon/doctrine-mean/index.json",
+      "completeness": "full",
+      "originalCharacters": 4357,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "xunzi",
+      "title": "荀子",
+      "indexFile": "canon/xunzi/index.json",
+      "completeness": "full",
+      "originalCharacters": 90404,
+      "translationCoverage": 0.3483,
+      "translationStatus": "in-progress"
+    },
+    {
+      "id": "dao-de-jing",
+      "title": "道德经",
+      "indexFile": "canon/dao-de-jing/index.json",
+      "completeness": "full",
+      "originalCharacters": 6433,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "zhuangzi",
+      "title": "庄子",
+      "indexFile": "canon/zhuangzi/index.json",
+      "completeness": "full",
+      "originalCharacters": 78309,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "heart-sutra",
+      "title": "般若波罗蜜多心经",
+      "indexFile": "canon/heart-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 1285,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "diamond-sutra",
+      "title": "金刚般若波罗蜜经",
+      "indexFile": "canon/diamond-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 6505,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "lotus-sutra",
+      "title": "妙法莲华经",
+      "indexFile": "canon/lotus-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 87383,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "vimalakirti",
+      "title": "维摩诘所说经",
+      "indexFile": "canon/vimalakirti/index.json",
+      "completeness": "full",
+      "originalCharacters": 33425,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "platform-sutra",
+      "title": "六祖大师法宝坛经",
+      "indexFile": "canon/platform-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 32629,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "dhammapada",
+      "title": "法句经",
+      "indexFile": "canon/dhammapada/index.json",
+      "completeness": "full",
+      "originalCharacters": 18892,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "huayan",
+      "title": "大方广佛华严经",
+      "indexFile": "canon/huayan/index.json",
+      "completeness": "full",
+      "originalCharacters": 693165,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    }
+  ]
+}
