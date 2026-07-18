@@ -17,6 +17,14 @@ await rename(dist, stagedClient)
 await mkdir(resolve(dist, 'client'), { recursive: true })
 await cp(stagedClient, resolve(dist, 'client'), { recursive: true })
 await rm(stagedClient, { recursive: true, force: true })
+await Promise.all([
+  'superego-avatar.png',
+  'superego-avatar-cyber-v1.png',
+  'scene-destiny.png',
+  'scene-lingtai.png',
+  'scene-mirror.png',
+  'scene-library.png',
+].map((file) => rm(resolve(dist, 'client/assets', file), { force: true })))
 run(resolve(root, 'node_modules/.bin/vite'), ['build', '--config', 'vite.worker.config.ts'])
 await mkdir(resolve(dist, '.openai'), { recursive: true })
 await cp(resolve(root, '.openai/hosting.json'), resolve(dist, '.openai/hosting.json'))
