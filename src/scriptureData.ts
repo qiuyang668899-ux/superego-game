@@ -37,12 +37,12 @@ export const CANON_FAMILIES: Array<{ id: '全部' | CanonFamily; name: string; n
 
 export const CANON_ENTRIES: CanonEntry[] = [
   {
-    id: 'analects', family: '儒', tradition: '先秦儒家', title: '论语', subtitle: '在关系与行动中成为君子', era: '春秋战国', author: '孔子弟子及再传弟子', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
+    id: 'analects', family: '儒', tradition: '四书', title: '论语', subtitle: '在关系与行动中成为君子', era: '春秋战国', author: '孔子弟子及再传弟子', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
     sourceCode: '儒家经典', tags: ['修身', '仁', '学习', '关系'], summary: '以对话和短章讨论学习、仁爱、礼、政治与自我修养，核心不是背诵结论，而是在日常关系中反复校正自己。',
     dao: '人成为怎样的人，取决于他每天如何对待自己与别人。', fa: ['学而时习：知识必须反复练习', '克己复礼：欲望与边界要能被看见', '忠恕：既尽己，也能推己及人'], shu: ['今天选一句能执行的话', '做完一件事后用三句话复盘', '遇到冲突时先换位描述对方处境'], excerpt: '学而时习之，不亦说乎。', readingMinutes: 35, volumes: '20 篇', featured: true,
   },
   {
-    id: 'mencius', family: '儒', tradition: '先秦儒家', title: '孟子', subtitle: '把心里微弱的善意养大', era: '战国', author: '孟子及其弟子', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
+    id: 'mencius', family: '儒', tradition: '四书', title: '孟子', subtitle: '把心里微弱的善意养大', era: '战国', author: '孟子及其弟子', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
     sourceCode: '儒家经典', tags: ['心性', '勇气', '选择', '仁政'], summary: '从恻隐、羞恶、辞让、是非四端出发，讨论人怎样在现实压力中保住内在方向，并把善的开端扩充成稳定人格。',
     dao: '人心有可以生长的方向，但需要环境、选择与练习共同保护。', fa: ['先辨义利，再做选择', '从四端看见价值感受', '以养气形成稳定行动'], shu: ['为一个选择写下“值得”和“代价”', '记录一次本可以冷漠但仍愿关心的时刻', '在压力下先守住一条不越过的底线'], excerpt: '虽千万人，吾往矣。', readingMinutes: 50, volumes: '7 篇', featured: true,
   },
@@ -55,6 +55,31 @@ export const CANON_ENTRIES: CanonEntry[] = [
     id: 'doctrine-mean', family: '儒', tradition: '四书', title: '中庸', subtitle: '在变化中守住恰当', era: '先秦至宋代', author: '传统归于子思', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
     sourceCode: '四书', tags: ['平衡', '诚', '情绪', '尺度'], summary: '中庸不是折中，而是在具体情境中找到不过与不及的恰当尺度；“诚”让内在价值与外在行动逐渐一致。',
     dao: '真正的稳定不是不变化，而是在变化里持续找到恰当。', fa: ['察两端而用其中', '情绪未发时先觉察', '以诚减少内外分裂'], shu: ['给一个冲突写出过度与不足两端', '情绪出现时延迟九十秒再回应', '选择一件可以更诚实表达的小事'], excerpt: '致中和，天地位焉，万物育焉。', readingMinutes: 25, volumes: '1 篇',
+  },
+  {
+    id: 'book-of-poetry', family: '儒', tradition: '五经', title: '诗经', subtitle: '从真实人情里学会感受与表达', era: '西周至春秋', author: '先秦诗歌总集', sourceLabel: 'chinese-poetry 开放古典文库', sourceUrl: 'https://github.com/chinese-poetry/chinese-poetry/tree/master/诗经',
+    sourceCode: '305篇', tags: ['诗歌', '人情', '礼乐', '表达'], summary: '收入国风、雅、颂共三百零五篇，用歌谣、宴飨和祭祀诗保存先秦生活与情感，也构成儒家诗教的重要底本。',
+    dao: '修行不只是控制自己，也要能听见真实感受，并给它合适的表达。', fa: ['以诗观心', '以比兴打开联想', '以反复形成节奏与记忆'], shu: ['读一篇并写下它最像今天哪种心情', '用一个具体意象描述难说的感受', '把情绪从评价改写成观察'], excerpt: '关关雎鸠，在河之洲。', readingMinutes: 120, volumes: '305 篇', featured: true,
+  },
+  {
+    id: 'book-of-documents', family: '儒', tradition: '五经', title: '尚书', subtitle: '从治乱兴衰里看责任与选择', era: '先秦文献汇编', author: '多时期文献', sourceLabel: 'NiuTrans Classical-Modern', sourceUrl: 'https://github.com/NiuTrans/Classical-Modern',
+    sourceCode: '开放平行语料', tags: ['政治', '责任', '历史', '治理'], summary: '汇集虞夏商周相关诰、誓、命等文献，在古代政治语言中讨论德、民、命与治理责任。',
+    dao: '位置越高，越要把愿望变成对共同体后果负责的行动。', fa: ['从历史后果检验决策', '区分口号与可执行命令', '把民众处境纳入治理'], shu: ['给一个决定补写受影响的人', '把大目标改成清楚的下一步', '事后检查承诺有没有兑现'], excerpt: '民惟邦本，本固邦宁。', readingMinutes: 120, volumes: '虞夏商周四书',
+  },
+  {
+    id: 'book-of-rites', family: '儒', tradition: '五经', title: '礼记', subtitle: '用边界、仪式与教育安顿关系', era: '战国至汉', author: '儒家礼学文献汇编', sourceLabel: 'NiuTrans Classical-Modern', sourceUrl: 'https://github.com/NiuTrans/Classical-Modern',
+    sourceCode: '开放平行语料', tags: ['礼', '关系', '教育', '仪式'], summary: '讨论礼制、教育、音乐、家庭与公共秩序。阅读它不必复刻古制，而可观察仪式怎样塑造注意、边界和共同体。',
+    dao: '稳定的人格不只靠意志，也靠反复进入身体和关系的好秩序。', fa: ['以仪式帮助转换状态', '以边界保护关系', '以教育养成习惯'], shu: ['给每天开工设计一个一分钟仪式', '为一段关系说清一条边界', '把重要承诺放进可重复流程'], excerpt: '玉不琢，不成器；人不学，不知道。', readingMinutes: 160, volumes: '49 篇',
+  },
+  {
+    id: 'book-of-changes', family: '儒', tradition: '五经', title: '周易', subtitle: '在变化中辨位置、时机与选择', era: '西周至战国', author: '经传长期形成', sourceLabel: 'Project Gutenberg', sourceUrl: 'https://www.gutenberg.org/ebooks/25501',
+    sourceCode: 'PG25501', tags: ['变化', '时机', '系统', '选择'], summary: '收入六十四卦、三百八十四爻与经传合编的完整原文，帮助读者从位置、关系和时机理解变化中的选择。',
+    dao: '局面一直在变，行动要同时看位置、关系和时机。', fa: ['观察变化的方向', '从阴阳两端检查张力', '根据位置选择力度'], shu: ['写下当前局面正在增强和减弱的因素', '区分现在该进、该守还是该等', '为行动设置一次复盘节点'], excerpt: '天行健，君子以自强不息。', readingMinutes: 100, volumes: '64 卦经传合编',
+  },
+  {
+    id: 'spring-autumn', family: '儒', tradition: '五经', title: '春秋左传', subtitle: '在真实事件里看动机、制度与后果', era: '春秋至战国', author: '传统归于左丘明', sourceLabel: 'NiuTrans Classical-Modern', sourceUrl: 'https://github.com/NiuTrans/Classical-Modern',
+    sourceCode: '开放平行语料', tags: ['历史', '选择', '制度', '叙事'], summary: '以编年叙事展开春秋诸国的外交、战争、礼法和人物选择，让抽象原则进入复杂局势与长期后果。',
+    dao: '判断一件事，不能只听当事人的理由，还要看制度条件和后来发生了什么。', fa: ['用事件链理解因果', '同时观察人和制度', '把短期得失放进长期历史'], shu: ['为一次冲突画出事件链', '写下个人动机之外的制度因素', '在决定前想象半年后的后果'], excerpt: '多行不义，必自毙。', readingMinutes: 220, volumes: '十二公编年', featured: true,
   },
   {
     id: 'xunzi', family: '儒', tradition: '先秦儒家', title: '荀子', subtitle: '用学习、礼法与环境塑造自己', era: '战国', author: '荀况', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
@@ -97,6 +122,11 @@ export const CANON_ENTRIES: CanonEntry[] = [
     sourceCode: 'T0279', tags: ['缘起', '系统', '愿行', '菩萨道'], summary: '以宏大的世界观描述万事万物彼此关联，并通过菩萨行与普贤行愿，把觉悟落实为长期、广大的行动方向。',
     dao: '任何改变都不是孤立发生的；个人成长会进入关系和世界的网络。', fa: ['以法界缘起理解互相依存', '用愿统合长期行动', '在一行中看见整体'], shu: ['画出一个问题的关系网络', '为长期愿望写一个今天的最小行动', '做决定时多看一个受影响的人'], excerpt: '一即一切，一切即一。', readingMinutes: 120, volumes: '80 卷',
   },
+  {
+    id: 'surangama-sutra', family: '释', tradition: '密教部', title: '大佛顶首楞严经', subtitle: '从注意、错认与发心中辨明修行', era: '唐', author: '传统题般剌蜜帝译', sourceLabel: 'CBETA Online', sourceUrl: 'https://cbetaonline.dila.edu.tw/zh/T0945',
+    sourceCode: 'T0945', tags: ['楞严', '觉察', '发心', '修行'], summary: '全经十卷，以阿难所问展开见闻觉知、修行次第与戒定慧等主题。文本史与译者问题有学术讨论，应用保留版本说明并鼓励对照研究。',
+    dao: '方向不清时，越用力越可能被旧习惯带走；先看清自己把什么错认成了“我”。', fa: ['反观注意落点', '以戒定慧校正路径', '检查发心与结果是否一致'], shu: ['遇到强烈念头先问“我正在被什么带走”', '把修行目标改写成可观察行为', '为一个练习设置安全边界'], excerpt: '若能转物，则同如来。', readingMinutes: 150, volumes: '10 卷', featured: true,
+  },
 
   {
     id: 'dao-de-jing', family: '道', tradition: '先秦道家', title: '道德经', subtitle: '减少强求，让行动顺着事物本身', era: '先秦', author: '传统归于老子', sourceLabel: '中国哲学书电子化计划', sourceUrl: CTEXT_URL,
@@ -128,11 +158,16 @@ export const CANON_ENTRIES: CanonEntry[] = [
     sourceCode: '道教劝善书', tags: ['伦理', '因果', '行为', '日课'], summary: '以善恶感应组织日常伦理，在传统社会形成广泛影响；可作为行为自省文本阅读，不把其中超自然因果当作科学结论。',
     dao: '人的长期处境会被每天反复做的选择塑造。', fa: ['以行为清单帮助自省', '把善恶落到具体关系', '重视小行为的累积'], shu: ['睡前记一件减少伤害的行为', '修复一个今天造成的小麻烦', '把超自然陈述与行为伦理分开阅读'], excerpt: '祸福无门，惟人自召。', readingMinutes: 20, volumes: '1 卷',
   },
+  {
+    id: 'jingming-record', family: '道', tradition: '净明道', title: '太上灵宝净明宗教录', subtitle: '把内在澄明落到忠孝与日用', era: '元代道教文献', author: '净明道传承文献', sourceLabel: 'Kanripo 汉籍资料库', sourceUrl: 'https://www.kanripo.org/ed/KR5i0041/',
+    sourceCode: 'KR5i0041', tags: ['净明道', '忠孝', '伦理', '内炼'], summary: '保存净明道教义、传承与修持材料，把内在修炼同忠孝、日常伦理和济世实践相连。',
+    dao: '所谓清净，不是与世界隔绝，而是减少内在混乱后更能承担现实关系。', fa: ['以内炼整理身心', '以忠孝检验修行', '把济世放进个人功课'], shu: ['先安静三分钟再处理关系问题', '把一条价值落实成今天的责任', '避免用神秘体验替代现实修复'], excerpt: '净明二字，乃正心诚意之学。', readingMinutes: 65, volumes: '2 册开放整理本', featured: true,
+  },
 
   {
     id: 'elements', family: '科', tradition: '数学', title: '几何原本', subtitle: '从定义、公设到证明的思考机器', era: '古希腊', author: '欧几里得', sourceLabel: 'Project Gutenberg', sourceUrl: GUTENBERG_URL,
     sourceCode: '数学史', tags: ['数学', '公理', '证明', '逻辑'], summary: '用定义、公设和逐步证明组织几何知识，奠定演绎体系范式；重要的不只是结论，而是怎样从共同前提出发建立可靠推理。',
-    dao: '复杂结论可以从少量清楚前提一步步推出。', fa: ['先定义对象', '公开基本假设', '每一步都能回到前提'], shu: ['为争论先定义关键词', '把一个结论拆成三步推理', '找出自己默认但没说出的假设'], excerpt: '从共同前提开始，证明才有可检查的道路。', readingMinutes: 90, volumes: '13 卷', featured: true,
+    dao: '复杂结论可以从少量清楚前提一步步推出。', fa: ['先定义对象', '公开基本假设', '每一步都能回到前提'], shu: ['为争论先定义关键词', '把一个结论拆成三步推理', '找出自己默认但没说出的假设'], excerpt: '从共同前提开始，证明才有可检查的道路。', readingMinutes: 90, volumes: '6 卷开放版', featured: true,
   },
   {
     id: 'principia', family: '科', tradition: '物理学', title: '自然哲学的数学原理', subtitle: '用数学模型连接天上与地上的运动', era: '1687', author: '艾萨克·牛顿', sourceLabel: 'Project Gutenberg', sourceUrl: GUTENBERG_URL,

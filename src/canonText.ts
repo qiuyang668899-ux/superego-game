@@ -31,6 +31,8 @@ export interface CanonDocumentIndex {
   translationCoverage: number
   translationStatus: CanonTranslationStatus
   translationLabel: string
+  originalLanguage?: string
+  originalDirection?: 'ltr' | 'rtl'
   sections: CanonSectionIndex[]
 }
 
@@ -58,8 +60,14 @@ export const FULL_CANON_IDS = new Set([
   'great-learning',
   'doctrine-mean',
   'xunzi',
+  'book-of-poetry',
+  'book-of-documents',
+  'book-of-rites',
+  'book-of-changes',
+  'spring-autumn',
   'dao-de-jing',
   'zhuangzi',
+  'jingming-record',
   'heart-sutra',
   'diamond-sutra',
   'lotus-sutra',
@@ -67,6 +75,19 @@ export const FULL_CANON_IDS = new Set([
   'platform-sutra',
   'dhammapada',
   'huayan',
+  'surangama-sutra',
+  'elements',
+  'principia',
+  'origin-species',
+  'principles-psychology',
+  'wealth-nations',
+  'critique-reason',
+  'bible',
+  'tanakh',
+  'quran',
+  'bhagavad-gita',
+  'upanishads',
+  'yoga-sutra',
 ])
 
 export function hasFullCanon(id: string) {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-18T10:47:55.224Z",
+  "generatedAt": "2026-07-18T13:17:53.980Z",
   "entries": [
     {
       "id": "analects",
@@ -12,40 +12,67 @@
       "translationStatus": "complete"
     },
     {
-      "id": "mencius",
-      "title": "孟子",
-      "indexFile": "canon/mencius/index.json",
+      "id": "bhagavad-gita",
+      "title": "薄伽梵歌",
+      "indexFile": "canon/bhagavad-gita/index.json",
       "completeness": "full",
-      "originalCharacters": 43297,
+      "originalCharacters": 64867,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "bible",
+      "title": "圣经",
+      "indexFile": "canon/bible/index.json",
+      "completeness": "full",
+      "originalCharacters": 1161635,
       "translationCoverage": 1,
       "translationStatus": "complete"
     },
     {
-      "id": "great-learning",
-      "title": "大学",
-      "indexFile": "canon/great-learning/index.json",
+      "id": "book-of-changes",
+      "title": "周易",
+      "indexFile": "canon/book-of-changes/index.json",
       "completeness": "full",
-      "originalCharacters": 2354,
+      "originalCharacters": 27635,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "book-of-documents",
+      "title": "尚书",
+      "indexFile": "canon/book-of-documents/index.json",
+      "completeness": "full",
+      "originalCharacters": 31310,
       "translationCoverage": 1,
       "translationStatus": "complete"
     },
     {
-      "id": "doctrine-mean",
-      "title": "中庸",
-      "indexFile": "canon/doctrine-mean/index.json",
+      "id": "book-of-poetry",
+      "title": "诗经",
+      "indexFile": "canon/book-of-poetry/index.json",
       "completeness": "full",
-      "originalCharacters": 4357,
+      "originalCharacters": 36941,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "book-of-rites",
+      "title": "礼记",
+      "indexFile": "canon/book-of-rites/index.json",
+      "completeness": "full",
+      "originalCharacters": 117350,
       "translationCoverage": 1,
       "translationStatus": "complete"
     },
     {
-      "id": "xunzi",
-      "title": "荀子",
-      "indexFile": "canon/xunzi/index.json",
+      "id": "critique-reason",
+      "title": "纯粹理性批判",
+      "indexFile": "canon/critique-reason/index.json",
       "completeness": "full",
-      "originalCharacters": 90404,
-      "translationCoverage": 0.5465,
-      "translationStatus": "in-progress"
+      "originalCharacters": 1263925,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
     },
     {
       "id": "dao-de-jing",
@@ -57,11 +84,47 @@
       "translationStatus": "complete"
     },
     {
-      "id": "zhuangzi",
-      "title": "庄子",
-      "indexFile": "canon/zhuangzi/index.json",
+      "id": "dhammapada",
+      "title": "法句经",
+      "indexFile": "canon/dhammapada/index.json",
       "completeness": "full",
-      "originalCharacters": 78309,
+      "originalCharacters": 18892,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "diamond-sutra",
+      "title": "金刚般若波罗蜜经",
+      "indexFile": "canon/diamond-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 6505,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "doctrine-mean",
+      "title": "中庸",
+      "indexFile": "canon/doctrine-mean/index.json",
+      "completeness": "full",
+      "originalCharacters": 4357,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "elements",
+      "title": "几何原本",
+      "indexFile": "canon/elements/index.json",
+      "completeness": "full",
+      "originalCharacters": 462599,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "great-learning",
+      "title": "大学",
+      "indexFile": "canon/great-learning/index.json",
+      "completeness": "full",
+      "originalCharacters": 2354,
       "translationCoverage": 1,
       "translationStatus": "complete"
     },
@@ -75,11 +138,20 @@
       "translationStatus": "complete"
     },
     {
-      "id": "diamond-sutra",
-      "title": "金刚般若波罗蜜经",
-      "indexFile": "canon/diamond-sutra/index.json",
+      "id": "huayan",
+      "title": "大方广佛华严经",
+      "indexFile": "canon/huayan/index.json",
       "completeness": "full",
-      "originalCharacters": 6505,
+      "originalCharacters": 693165,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "jingming-record",
+      "title": "太上灵宝净明宗教录",
+      "indexFile": "canon/jingming-record/index.json",
+      "completeness": "full",
+      "originalCharacters": 21340,
       "translationCoverage": 0,
       "translationStatus": "unavailable"
     },
@@ -93,11 +165,20 @@
       "translationStatus": "unavailable"
     },
     {
-      "id": "vimalakirti",
-      "title": "维摩诘所说经",
-      "indexFile": "canon/vimalakirti/index.json",
+      "id": "mencius",
+      "title": "孟子",
+      "indexFile": "canon/mencius/index.json",
       "completeness": "full",
-      "originalCharacters": 33425,
+      "originalCharacters": 43297,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "origin-species",
+      "title": "物种起源",
+      "indexFile": "canon/origin-species/index.json",
+      "completeness": "full",
+      "originalCharacters": 929820,
       "translationCoverage": 0,
       "translationStatus": "unavailable"
     },
@@ -111,22 +192,112 @@
       "translationStatus": "unavailable"
     },
     {
-      "id": "dhammapada",
-      "title": "法句经",
-      "indexFile": "canon/dhammapada/index.json",
+      "id": "principia",
+      "title": "自然哲学的数学原理",
+      "indexFile": "canon/principia/index.json",
       "completeness": "full",
-      "originalCharacters": 18892,
+      "originalCharacters": 797828,
       "translationCoverage": 0,
       "translationStatus": "unavailable"
     },
     {
-      "id": "huayan",
-      "title": "大方广佛华严经",
-      "indexFile": "canon/huayan/index.json",
+      "id": "principles-psychology",
+      "title": "心理学原理",
+      "indexFile": "canon/principles-psychology/index.json",
       "completeness": "full",
-      "originalCharacters": 693165,
+      "originalCharacters": 3275714,
       "translationCoverage": 0,
       "translationStatus": "unavailable"
+    },
+    {
+      "id": "quran",
+      "title": "古兰经",
+      "indexFile": "canon/quran/index.json",
+      "completeness": "full",
+      "originalCharacters": 714366,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "spring-autumn",
+      "title": "春秋左传",
+      "indexFile": "canon/spring-autumn/index.json",
+      "completeness": "full",
+      "originalCharacters": 244016,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
+    },
+    {
+      "id": "surangama-sutra",
+      "title": "大佛顶首楞严经",
+      "indexFile": "canon/surangama-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 85871,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "tanakh",
+      "title": "塔纳赫",
+      "indexFile": "canon/tanakh/index.json",
+      "completeness": "full",
+      "originalCharacters": 2609169,
+      "translationCoverage": 0.9849,
+      "translationStatus": "in-progress"
+    },
+    {
+      "id": "upanishads",
+      "title": "奥义书选",
+      "indexFile": "canon/upanishads/index.json",
+      "completeness": "full",
+      "originalCharacters": 100646,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "vimalakirti",
+      "title": "维摩诘所说经",
+      "indexFile": "canon/vimalakirti/index.json",
+      "completeness": "full",
+      "originalCharacters": 33425,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "wealth-nations",
+      "title": "国富论",
+      "indexFile": "canon/wealth-nations/index.json",
+      "completeness": "full",
+      "originalCharacters": 2209658,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "xunzi",
+      "title": "荀子",
+      "indexFile": "canon/xunzi/index.json",
+      "completeness": "full",
+      "originalCharacters": 90404,
+      "translationCoverage": 0.5465,
+      "translationStatus": "in-progress"
+    },
+    {
+      "id": "yoga-sutra",
+      "title": "瑜伽经",
+      "indexFile": "canon/yoga-sutra/index.json",
+      "completeness": "full",
+      "originalCharacters": 175190,
+      "translationCoverage": 0,
+      "translationStatus": "unavailable"
+    },
+    {
+      "id": "zhuangzi",
+      "title": "庄子",
+      "indexFile": "canon/zhuangzi/index.json",
+      "completeness": "full",
+      "originalCharacters": 78309,
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     }
   ]
 }

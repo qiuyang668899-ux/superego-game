@@ -633,7 +633,7 @@ function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; pat
         })}
       </nav>
 
-      <div className="canon-license-note"><ShieldCheck size={14} /><p><b>经文永久免费：</b>七部佛典已按 CBETA 经号收入完整原典，不设付费墙、不消耗命火。现代译文由《超我》分批生成并持续校勘；收费功能与经文阅读严格分开。</p><a href="https://www.cbeta.org/copyright" target="_blank" rel="noreferrer">查看 CBETA 授权<ExternalLink size={12} /></a></div>
+      <div className="canon-license-note"><ShieldCheck size={14} /><p><b>原典永久免费：</b>四书五经、佛道原典、科学史名著与多宗教经典均可直接打开，不设付费墙、不消耗命火。每部书独立展示来源与授权，现代译文按完成度如实标注并持续校勘。</p><a href="https://www.cbeta.org/copyright" target="_blank" rel="noreferrer">查看 CBETA 授权<ExternalLink size={12} /></a></div>
 
       <div className="canon-workbench">
         <aside className="canon-traditions">
@@ -890,7 +890,7 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
                     const modern = section.modern[paragraphIndex]?.trim()
                     return (
                       <article className="reader-pair" data-reader-paragraph={paragraphIndex} key={`${section.id}-${paragraphIndex}`}>
-                        {mode !== 'guide' && <div className="reader-source-block"><small>原典 · 第 {paragraphIndex + 1} 段</small><p>{display(paragraph)}</p></div>}
+                        {mode !== 'guide' && <div className="reader-source-block"><small>原典 · 第 {paragraphIndex + 1} 段</small><p lang={document!.originalLanguage} dir={document!.originalDirection || 'auto'}>{display(paragraph)}</p></div>}
                         {mode !== 'source' && (modern
                           ? <div className="reader-guide-block"><small>现代译文</small><p>{display(modern)}</p></div>
                           : <div className="reader-guide-block reader-translation-pending"><small>现代译文 · 校勘中</small><p>这段译文正在生成。你可以先读原典，完成后会自动补进同一位置。</p></div>)}

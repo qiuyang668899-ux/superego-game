@@ -14,8 +14,13 @@ function argument(name, fallback) {
 
 const requestedBook = argument('book', 'auto')
 const maxBatches = Number(argument('max-batches', '12'))
-const batchCharacters = Number(argument('batch-characters', '1400'))
-const priority = ['heart-sutra', 'xunzi', 'diamond-sutra', 'platform-sutra', 'vimalakirti', 'dhammapada', 'lotus-sutra', 'huayan']
+const batchCharacters = Number(argument('batch-characters', '4200'))
+const priority = [
+  'book-of-poetry', 'book-of-changes', 'surangama-sutra', 'jingming-record',
+  'xunzi', 'diamond-sutra', 'platform-sutra', 'vimalakirti', 'dhammapada', 'lotus-sutra', 'huayan',
+  'bhagavad-gita', 'upanishads', 'yoga-sutra', 'quran', 'tanakh',
+  'elements', 'principia', 'origin-species', 'principles-psychology', 'wealth-nations', 'critique-reason',
+]
 
 if (!TOKEN) throw new Error('Missing GITHUB_TOKEN or GH_TOKEN for GitHub Models')
 
@@ -67,7 +72,7 @@ async function translateBatch(paragraphs, retryDepth = 0) {
       messages: [
         {
           role: 'system',
-          content: '你是《超我》藏经阁的严谨古籍译者。把文言与汉文典籍逐段译成今天普通读者一遍就能懂的现代汉语，不要只做繁简转换，也不要照抄文言句式；长句可以在同一个译文字符串内拆成短句。忠实保留原意、人名、概念与宗教专名，不添加原文没有的因果、神迹、评价或劝诫；咒语写成“音译咒语，保留原音：……”并保留原咒，不要编造字面意义。每个输入键只对应自己的完整译文，绝不能把上一段的后半部分放进下一个键。',
+          content: '你是《超我》藏经阁的严谨经典译者。把文言文、繁体汉文、英语、拉丁语、希伯来语、阿拉伯语、梵语等原典逐段译成今天普通中文读者一遍就能懂的现代汉语。不要只做繁简转换，也不要照抄原文句式；长句可以在同一个译文字符串内拆成短句。忠实保留原意、人名、术语、编号和宗教专名；不添加原文没有的因果、神迹、科学结论、评价或劝诫。无法可靠直译的音译、咒语或专名要明确标注保留原音，绝不编造字面意义。每个输入键只对应自己的完整译文，绝不能把上一段的后半部分放进下一个键。',
         },
         {
           role: 'user',
@@ -181,7 +186,7 @@ outer: for (const descriptor of document.sections) {
     const indexes = []
     const paragraphs = []
     let characters = 0
-    for (let index = cursor; index < section.original.length && indexes.length < 4; index += 1) {
+    for (let index = cursor; index < section.original.length && indexes.length < 8; index += 1) {
       if (section.modern[index]?.trim()) continue
       const paragraph = section.original[index]
       if (indexes.length && characters + paragraph.length > batchCharacters) break
