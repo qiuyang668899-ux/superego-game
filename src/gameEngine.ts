@@ -36,6 +36,9 @@ export const DEFAULT_STATE: GameState = {
     { id: 'welcome-1', role: 'superego', text: '镜门已经打开。告诉我，今天是哪一道旧业又把你拖回去了？' },
     { id: 'welcome-2', role: 'superego', text: '万法由我去参，诸劫由我先渡；我只把一道你现在接得住的神通投回来。' },
   ],
+  aiConsent: false,
+  aiConsentAt: 0,
+  coachMemories: [],
   projections: [
     {
       id: 'first-projection',
@@ -88,6 +91,9 @@ function normalizeState(value: Partial<GameState>): GameState {
     canonBookmarks: Array.isArray(value.canonBookmarks) ? value.canonBookmarks : DEFAULT_STATE.canonBookmarks,
     canonHistory: Array.isArray(value.canonHistory) ? value.canonHistory : DEFAULT_STATE.canonHistory,
     canonProgress: value.canonProgress && typeof value.canonProgress === 'object' ? value.canonProgress : DEFAULT_STATE.canonProgress,
+    aiConsent: Boolean(value.aiConsent),
+    aiConsentAt: typeof value.aiConsentAt === 'number' ? value.aiConsentAt : 0,
+    coachMemories: Array.isArray(value.coachMemories) ? value.coachMemories.slice(-16) : [],
   }
   const energyPassed = Math.max(0, Date.now() - merged.lastEnergyAt)
   const recovered = Math.floor(energyPassed / (3 * 60 * 60 * 1000))
@@ -385,11 +391,23 @@ export function coachReply(input: string, state: GameState) {
   if (includesAny(text, ['焦虑', '压力', '很累', '崩溃', '内耗'])) {
     return `${voice}先别分析那么多。脚踩地，慢慢呼吸三次，呼气比吸气长一点。然后告诉我：是身体很紧、事情太多，还是怕自己做不好？`
   }
+  if (
+    includesAny(text, ['公司', '工作', '跳槽', '工资', '房贷'])
+    && includesAny(text, ['怎么选', '选哪个', '该不该', '要不要', '判断'])
+  ) {
+    return '我听到的不是“稳定还是成长”这么简单：你想成长，但房贷让失败成本不能失控。我的判断是——先别因为稳定留下，也别只因为涨薪就跳；如果新团队能证明至少 12 个月资金或订单、你的直属上级靠谱、岗位能力可迁移，并且你留有 6 个月家庭现金缓冲，就选新机会。四项里缺两项以上，先留在原公司，同时继续找更成熟的成长型岗位。下一步只核实一件最关键的事：新团队未来 12 个月靠什么活下来？'
+  }
+  if (includesAny(text, ['怎么选', '选哪个', '选择', '该不该', '要不要', '判断', '去不去'])) {
+    return `${voice}你不是缺一个“勇敢点”的口号，而是要知道哪个代价你承担得起。先把两个选项各写四项：最坏结果、能否恢复、半年后的能力增长、是否更接近你真正想要的生活。我的原则是：优先选“即使失败也能恢复，同时能带来可迁移成长”的那个。你先告诉我两个选项分别是什么，以及你最不能承受的损失是什么，我再明确替你判断。`
+  }
   if (includesAny(text, ['学', '书', '知识', '记不住'])) {
     return `${voice}我已经从你交来的内容里悟出 ${state.arts.length} 门神通。先别继续收藏，现在让「${latest.name}」显化一次：${latest.realAction} 做完再回来，我会根据真实结果继续修正。`
   }
-  if (includesAny(text, ['方向', '选择', '迷茫', '不知道'])) {
-    return `${voice}选项太多时先别全想。回到你最想练的「${state.primeVow}」：哪个选择能让它今天往前一点？先做那个，其他决定明天再说。`
+  if (includesAny(text, ['方向', '迷茫', '不知道'])) {
+    return `${voice}“迷茫”通常把好几个问题揉在了一起。现在最需要分清的是：你不知道自己想要什么，还是知道想要什么、但怕付出代价？你只回答这一个问题，我就沿着那条线和你继续拆。`
   }
-  return `${voice}我听见了。先别给自己下结论，把“我就是这样的人”改成“我最近总会这样”。然后把问题缩小，只做两分钟。你不用一下走出去，我们先找一块能踩稳的地方。`
+  if (/为什么|是什么|怎么|如何|多少|哪[个里]|能不能|会不会/.test(text)) {
+    return '我知道你现在需要的是一个答案，不是安慰。云端心核暂时没有接通，仅靠本地心诀继续回答，可能会假装懂你——我不想这么做。请补充这个问题最关键的一条背景，或稍后重试；心核接通后，我会先给结论，再说明依据和不确定之处。'
+  }
+  return `${voice}我不想急着把你的话套进一个建议里。你希望我此刻主要做哪一件事：先听你把事情说完整、帮你判断一个选择，还是给一个马上能执行的办法？选一个，我就沿着那条线认真接住。`
 }

@@ -34,6 +34,12 @@ export interface ChatMessage {
   text: string
 }
 
+export interface CoachMemory {
+  id: string
+  text: string
+  createdAt: number
+}
+
 export interface Projection {
   id: string
   artId: string
@@ -103,6 +109,9 @@ export interface GameState {
   knowledge: KnowledgeEntry[]
   arts: CultivationArt[]
   messages: ChatMessage[]
+  aiConsent: boolean
+  aiConsentAt: number
+  coachMemories: CoachMemory[]
   projections: Projection[]
   agent: AgentIdentity
   initiatives: AgentInitiative[]

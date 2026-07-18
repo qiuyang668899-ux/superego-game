@@ -50,6 +50,7 @@ import {
 import { DAILY_QUESTS, KNOWLEDGE_SAMPLES, REALMS, SHOP_PACKAGES, STORY_CHAPTERS, VOWS } from './gameData'
 import { CANON_ENTRIES, CANON_FAMILIES } from './scriptureData'
 import { hasFullCanon, loadCanonIndex, loadCanonSection } from './canonText'
+import { askSuperego, needsImmediateSupport } from './coachApi'
 import {
   buildProjection,
   acceptAgentInitiative,
@@ -1119,6 +1120,8 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
 
 function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameState; patchGame: (value: Partial<GameState> | ((current: GameState) => GameState)) => void; onComplete: (id: string) => void; setToast: (value: string) => void }) {
   const [input, setInput] = useState('')
+  const [thinking, setThinking] = useState(false)
+  const [heartStatus, setHeartStatus] = useState<'ready' | 'online' | 'local'>('ready')
   const feedRef = useRef<HTMLDivElement>(null)
   const pending = game.projections.filter((projection) => !projection.completed)
 
@@ -1126,22 +1129,56 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
     if (feedRef.current) {
       feedRef.current.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })
     }
-  }, [game.messages])
+  }, [game.messages, thinking])
 
-  const send = (value = input) => {
+  const send = async (value = input) => {
     const text = value.trim()
-    if (!text) return
-    const response = coachReply(text, game)
-    patchGame((current) => growAgent({
+    if (!text || thinking) return
+    if (!game.aiConsent) {
+      setToast('先开启智能心核，我才可以认真听完并回应你')
+      return
+    }
+
+    patchGame((current) => ({
       ...current,
-      messages: [
-        ...current.messages,
-        { id: crypto.randomUUID(), role: 'self' as const, text },
-        { id: crypto.randomUUID(), role: 'superego' as const, text: response },
-      ].slice(-28),
-    }, 'chat', '我从这次对话里更新了对你的理解，但不会把你一时的情绪当成永远不变的性格。'))
+      messages: [...current.messages, { id: crypto.randomUUID(), role: 'self' as const, text }].slice(-28),
+    }))
     setInput('')
+    setThinking(true)
     playTone(game.soundOn, 'soft')
+
+    let response = ''
+    let memoryNotes: string[] = []
+    try {
+      if (needsImmediateSupport(text)) {
+        response = coachReply(text, game)
+        setHeartStatus('local')
+      } else {
+        const result = await askSuperego(text, game)
+        response = result.reply
+        memoryNotes = result.memoryNotes
+        setHeartStatus('online')
+      }
+    } catch {
+      response = coachReply(text, game)
+      setHeartStatus('local')
+      setToast('云端心核暂时未连接，已由本地心诀先接住你')
+    } finally {
+      patchGame((current) => {
+        const known = new Set(current.coachMemories.map((item) => item.text))
+        const additions = memoryNotes
+          .filter((item) => !known.has(item))
+          .map((item) => ({ id: crypto.randomUUID(), text: item, createdAt: Date.now() }))
+        return growAgent({
+          ...current,
+          coachMemories: [...current.coachMemories, ...additions].slice(-16),
+          messages: [...current.messages, { id: crypto.randomUUID(), role: 'superego' as const, text: response }].slice(-28),
+        }, 'chat', memoryNotes.length
+          ? `我记住了这次对话里可长期复用的背景：${memoryNotes.join('；')}`
+          : '我从这次对话里更新了对你的理解，但不会把你一时的情绪当成永远不变的性格。')
+      })
+      setThinking(false)
+    }
   }
 
   return (
@@ -1154,8 +1191,32 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
           <div className="coach-profile">
             <div className="coach-avatar"><img src={AVATAR_PATH} alt="超我教练" /><i /></div>
             <div><span>渡劫归来的你</span><h2>超我 · {getRealm(game.xp).realm.name}形态</h2><small><i />镜门已开 · 已悟 {game.arts.length} 门神通</small></div>
-            <span className="bond">羁绊 {Math.min(99, 22 + game.merit)}%</span>
+            <span className={`bond heart-${heartStatus}`}>{heartStatus === 'online' ? '智能心核 · 已连接' : heartStatus === 'local' ? '本地心诀 · 代守' : `羁绊 ${Math.min(99, 22 + game.merit)}%`}</span>
           </div>
+          {!game.aiConsent && (
+            <div className="ai-consent-card">
+              <ShieldCheck size={22} />
+              <div><b>开启真正会倾听的智能心核</b><p>开启后，你的问题、最近对话、主动记忆和相关修行资料会发送到已配置的 AI 服务，用来理解上下文。记忆只保存在这台设备，可随时清除。</p></div>
+              <button onClick={() => {
+                patchGame({ aiConsent: true, aiConsentAt: Date.now() })
+                setToast('智能心核已开启 · 现在可以把真实问题交给他')
+              }}>同意并开启</button>
+            </div>
+          )}
+          {game.aiConsent && (
+            <details className="coach-memory">
+              <summary><BrainCircuit size={13} />心识记忆 · {game.coachMemories.length} 条 <span>仅存本机</span></summary>
+              <div>
+                {game.coachMemories.length
+                  ? game.coachMemories.slice(-6).map((memory) => <p key={memory.id}>{memory.text}</p>)
+                  : <p>我还没有把你的一时情绪写成长期记忆。只有稳定目标、偏好和重要限制值得留下。</p>}
+                <button onClick={() => {
+                  patchGame({ coachMemories: [], messages: DEFAULT_STATE.messages })
+                  setToast('对话与心识记忆已从这台设备清除')
+                }}><RotateCcw size={12} />清除对话与记忆</button>
+              </div>
+            </details>
+          )}
           <div className="chat-feed" ref={feedRef}>
             {game.messages.map((message) => (
               <div className={`chat-message ${message.role}`} key={message.id}>
@@ -1163,15 +1224,16 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
                 <p>{message.text}</p>
               </div>
             ))}
+            {thinking && <div className="chat-message superego thinking"><span className="mini-avatar"><img src={AVATAR_PATH} alt="" /></span><p><i /><i /><i /><span>我在听，也在把你说的事放进前后文里想。</span></p></div>}
           </div>
           <div className="quick-replies">
-            {['你现在想做什么', '我开始不了', '我现在很焦虑', '我不知道选什么'].map((item) => <button key={item} onClick={() => send(item)}>{item}</button>)}
+            {['先听我把事情说完', '帮我分析一个选择', '我现在很焦虑', '给我一个具体答案'].map((item) => <button disabled={thinking} key={item} onClick={() => void send(item)}>{item}</button>)}
           </div>
-          <form className="chat-input" onSubmit={(event) => { event.preventDefault(); send() }}>
-            <input value={input} onChange={(event) => setInput(event.target.value)} placeholder="直接说：你现在卡在哪……" />
-            <button aria-label="发送给超我"><Send size={17} /></button>
+          <form className="chat-input" onSubmit={(event) => { event.preventDefault(); void send() }}>
+            <textarea disabled={!game.aiConsent || thinking} maxLength={6000} rows={2} value={input} onChange={(event) => setInput(event.target.value)} placeholder={game.aiConsent ? '把事情完整说出来。发生了什么、你最担心什么、希望我帮你想清什么……' : '先开启智能心核，再把真实问题交给我。'} />
+            <button disabled={!game.aiConsent || thinking || !input.trim()} aria-label="发送给超我">{thinking ? <RefreshCw size={17} /> : <Send size={17} />}</button>
           </form>
-          <p className="coach-boundary"><Info size={12} />超我用于日常成长陪伴，不能替代医疗、心理治疗或紧急援助。</p>
+          <p className="coach-boundary"><Info size={12} />AI 可能出错。重要事实请核验；超我不能替代医疗、心理治疗、法律或紧急援助。</p>
         </section>
 
         <aside className="projection-board">
