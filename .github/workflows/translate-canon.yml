@@ -14,7 +14,7 @@ on:
         default: '12'
         type: string
   schedule:
-    - cron: '23 */6 * * *'
+    - cron: '23 */3 * * *'
 
 permissions:
   contents: write
@@ -41,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CANON_TRANSLATION_MODEL: openai/gpt-4.1-mini
-        run: node scripts/translate-canon.mjs --book "${{ inputs.book || 'auto' }}" --max-batches "${{ inputs.max_batches || '12' }}"
+        run: node scripts/translate-canon.mjs --book "${{ inputs.book || 'auto' }}" --max-batches "${{ inputs.max_batches || '18' }}"
       - name: Save translated paragraphs
         id: save
         run: |
@@ -60,4 +60,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run deploy-pages.yml --ref main
-
