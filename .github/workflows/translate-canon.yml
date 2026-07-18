@@ -40,6 +40,7 @@ jobs:
       - name: Translate the next batch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           CANON_TRANSLATION_MODEL: openai/gpt-4.1-mini
         run: node scripts/translate-canon.mjs --book "${{ inputs.book || 'auto' }}" --max-batches "${{ inputs.max_batches || '18' }}" --batch-characters "4200"
       - name: Save translated paragraphs

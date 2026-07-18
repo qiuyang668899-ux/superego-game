@@ -3,9 +3,12 @@ import { join } from 'node:path'
 
 const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname)
 const CANON_ROOT = join(ROOT, 'public', 'canon')
-const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
-const MODEL = process.env.CANON_TRANSLATION_MODEL || 'openai/gpt-4.1-mini'
-const ENDPOINT = 'https://models.github.ai/inference/chat/completions'
+const DEEPSEEK_TOKEN = process.env.DEEPSEEK_API_KEY
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
+const TOKEN = DEEPSEEK_TOKEN || GITHUB_TOKEN
+const PROVIDER = DEEPSEEK_TOKEN ? 'DeepSeek' : 'GitHub Models'
+const MODEL = DEEPSEEK_TOKEN ? 'deepseek-chat' : process.env.CANON_TRANSLATION_MODEL || 'openai/gpt-4.1-mini'
+const ENDPOINT = DEEPSEEK_TOKEN ? 'https://api.deepseek.com/chat/completions' : 'https://models.github.ai/inference/chat/completions'
 
 function argument(name, fallback) {
   const index = process.argv.indexOf(`--${name}`)
@@ -22,7 +25,7 @@ const priority = [
   'elements', 'principia', 'origin-species', 'principles-psychology', 'wealth-nations', 'critique-reason',
 ]
 
-if (!TOKEN) throw new Error('Missing GITHUB_TOKEN or GH_TOKEN for GitHub Models')
+if (!TOKEN) throw new Error('Missing DEEPSEEK_API_KEY, GITHUB_TOKEN, or GH_TOKEN for canon translation')
 
 function parseJsonPayload(content) {
   const cleaned = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
@@ -37,19 +40,9 @@ function parseJsonPayload(content) {
 async function translateBatch(paragraphs, retryDepth = 0) {
   const keys = paragraphs.map((_, index) => `p${index + 1}`)
   const properties = Object.fromEntries(keys.map((key) => [key, { type: 'string' }]))
-  const response = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${TOKEN}`,
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2026-03-10',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.1,
-      max_tokens: 6000,
-      response_format: {
+  const responseFormat = DEEPSEEK_TOKEN
+    ? { type: 'json_object' }
+    : {
         type: 'json_schema',
         json_schema: {
           name: 'canon_translations',
@@ -68,7 +61,20 @@ async function translateBatch(paragraphs, retryDepth = 0) {
             additionalProperties: false,
           },
         },
-      },
+      }
+  const response = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2026-03-10',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0.1,
+      max_tokens: 6000,
+      response_format: responseFormat,
       messages: [
         {
           role: 'system',
@@ -87,7 +93,7 @@ async function translateBatch(paragraphs, retryDepth = 0) {
 
   if (!response.ok) {
     const detail = await response.text()
-    throw new Error(`GitHub Models ${response.status}: ${detail.slice(0, 500)}`)
+    throw new Error(`${PROVIDER} ${response.status}: ${detail.slice(0, 500)}`)
   }
   const payload = await response.json()
   const content = payload.choices?.[0]?.message?.content
@@ -183,7 +189,7 @@ let cursor = 0
 while (cursor < pending.length && batches < maxBatches) {
   const items = []
   let characters = 0
-  while (cursor < pending.length && items.length < 8) {
+  while (cursor < pending.length && items.length < 24) {
     const item = pending[cursor]
     if (items.length && characters + item.paragraph.length > batchCharacters) break
     items.push(item)
@@ -191,7 +197,16 @@ while (cursor < pending.length && batches < maxBatches) {
     cursor += 1
   }
 
-  const translations = await translateBatch(items.map((item) => item.paragraph))
+  let translations
+  try {
+    translations = await translateBatch(items.map((item) => item.paragraph))
+  } catch (error) {
+    if (String(error).includes('429')) {
+      console.warn(`${PROVIDER} is rate-limited; saving ${batches} completed batches and continuing next run.`)
+      break
+    }
+    throw error
+  }
   const touched = new Map()
   items.forEach((item, resultIndex) => {
     item.section.modern[item.index] = translations[resultIndex]
