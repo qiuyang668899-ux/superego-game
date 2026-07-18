@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-18T13:17:53.980Z",
+  "generatedAt": "2026-07-18T13:24:14.265Z",
   "entries": [
     {
       "id": "analects",
@@ -53,8 +53,8 @@
       "indexFile": "canon/book-of-poetry/index.json",
       "completeness": "full",
       "originalCharacters": 36941,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 0.0342,
+      "translationStatus": "in-progress"
     },
     {
       "id": "book-of-rites",
