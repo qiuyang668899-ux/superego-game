@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-18T16:15:33.944Z",
+  "generatedAt": "2026-07-18T19:40:16.530Z",
   "entries": [
     {
       "id": "analects",
@@ -35,7 +35,7 @@
       "indexFile": "canon/book-of-changes/index.json",
       "completeness": "full",
       "originalCharacters": 27635,
-      "translationCoverage": 0.0576,
+      "translationCoverage": 0.4909,
       "translationStatus": "in-progress"
     },
     {
