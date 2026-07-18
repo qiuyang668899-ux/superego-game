@@ -164,47 +164,48 @@ if (!bookId) {
 const document = JSON.parse(await readFile(join(CANON_ROOT, bookId, 'index.json'), 'utf8'))
 let batches = 0
 let translatedParagraphs = 0
+const pending = []
+const sectionStates = []
 
-outer: for (const descriptor of document.sections) {
+for (const descriptor of document.sections) {
   const path = join(CANON_ROOT, bookId, descriptor.file)
   const section = JSON.parse(await readFile(path, 'utf8'))
+  sectionStates.push({ path, section })
 
   for (let index = 0; index < section.original.length; index += 1) {
     if (section.modern[index]?.trim()) continue
     if (isHeading(section.original[index])) section.modern[index] = section.original[index]
-  }
-
-  let cursor = 0
-  while (cursor < section.original.length) {
-    while (cursor < section.original.length && section.modern[cursor]?.trim()) cursor += 1
-    if (cursor >= section.original.length) break
-    if (batches >= maxBatches) {
-      await writeFile(path, `${JSON.stringify(section)}\n`)
-      break outer
-    }
-
-    const indexes = []
-    const paragraphs = []
-    let characters = 0
-    for (let index = cursor; index < section.original.length && indexes.length < 8; index += 1) {
-      if (section.modern[index]?.trim()) continue
-      const paragraph = section.original[index]
-      if (indexes.length && characters + paragraph.length > batchCharacters) break
-      indexes.push(index)
-      paragraphs.push(paragraph)
-      characters += paragraph.length
-    }
-
-    const translations = await translateBatch(paragraphs)
-    indexes.forEach((paragraphIndex, resultIndex) => {
-      section.modern[paragraphIndex] = translations[resultIndex]
-    })
-    batches += 1
-    translatedParagraphs += indexes.length
-    await writeFile(path, `${JSON.stringify(section)}\n`)
-    console.log(`${bookId} ${descriptor.id}: batch ${batches}/${maxBatches}, ${indexes.length} paragraphs, ${characters} original chars`)
+    else pending.push({ descriptor, path, section, index, paragraph: section.original[index] })
   }
 }
+
+let cursor = 0
+while (cursor < pending.length && batches < maxBatches) {
+  const items = []
+  let characters = 0
+  while (cursor < pending.length && items.length < 8) {
+    const item = pending[cursor]
+    if (items.length && characters + item.paragraph.length > batchCharacters) break
+    items.push(item)
+    characters += item.paragraph.length
+    cursor += 1
+  }
+
+  const translations = await translateBatch(items.map((item) => item.paragraph))
+  const touched = new Map()
+  items.forEach((item, resultIndex) => {
+    item.section.modern[item.index] = translations[resultIndex]
+    touched.set(item.path, item.section)
+  })
+  for (const [path, section] of touched) await writeFile(path, `${JSON.stringify(section)}\n`)
+  batches += 1
+  translatedParagraphs += items.length
+  const from = items[0].descriptor.id
+  const to = items.at(-1).descriptor.id
+  console.log(`${bookId} ${from}${from === to ? '' : `–${to}`}: batch ${batches}/${maxBatches}, ${items.length} paragraphs, ${characters} original chars`)
+}
+
+for (const { path, section } of sectionStates) await writeFile(path, `${JSON.stringify(section)}\n`)
 
 const updated = await updateIndex(bookId)
 const manifestPath = join(CANON_ROOT, 'manifest.json')
