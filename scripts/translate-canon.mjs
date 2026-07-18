@@ -61,6 +61,8 @@ async function translateBatch(paragraphs, retryDepth = 0) {
               translations: {
                 type: 'array',
                 items: { type: 'string' },
+                minItems: paragraphs.length,
+                maxItems: paragraphs.length,
               },
             },
             required: ['translations'],
@@ -89,8 +91,11 @@ async function translateBatch(paragraphs, retryDepth = 0) {
   const content = payload.choices?.[0]?.message?.content
   if (!content) throw new Error('GitHub Models returned an empty translation')
   const translations = parseJsonArray(content).map((value) => String(value).trim())
+  if (paragraphs.length === 1 && translations.some(Boolean)) {
+    return [translations.filter(Boolean).join('\n\n')]
+  }
   if (translations.length !== paragraphs.length || translations.some((value) => !value)) {
-    if (paragraphs.length === 1 || retryDepth >= 3) {
+    if (retryDepth >= 3) {
       throw new Error(`Expected ${paragraphs.length} complete translations, received ${translations.filter(Boolean).length}`)
     }
     const middle = Math.ceil(paragraphs.length / 2)
