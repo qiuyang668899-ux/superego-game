@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  publicDir: false,
   build: {
     ssr: 'worker/index.mjs',
     outDir: 'dist/server',
