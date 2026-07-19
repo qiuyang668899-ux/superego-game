@@ -61,7 +61,7 @@ import {
 } from './gameData'
 import { CANON_ENTRIES, CANON_FAMILIES } from './scriptureData'
 import { hasFullCanon, loadCanonIndex, loadCanonSection } from './canonText'
-import { askSuperego, needsImmediateSupport } from './coachApi'
+import { askSuperego, checkSuperegoHealth, needsImmediateSupport } from './coachApi'
 import {
   buildProjection,
   acceptAgentInitiative,
@@ -85,6 +85,30 @@ import type { CultivationArt, GameState, KnowledgeType, TabId } from './types'
 const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`
 const AVATAR_PATH = `${ASSET_BASE}superego-avatar.jpg`
 const STORY_SCENE_PATH = `${ASSET_BASE}scene-main-quest-v2.jpg`
+const TRIBULATION_MAP_PATH = `${ASSET_BASE}scene-tribulation-map-v1.jpg`
+const PRACTICE_VISUALS = {
+  learn: {
+    scene: `${ASSET_BASE}scene-practice-scripture-v1.jpg`,
+    icon: `${ASSET_BASE}icon-scripture-scroll-v1.jpg`,
+    label: '取经炼法',
+  },
+  act: {
+    scene: `${ASSET_BASE}scene-practice-action-v1.jpg`,
+    icon: `${ASSET_BASE}icon-step-talisman-v1.jpg`,
+    label: '现实显化',
+  },
+  observe: {
+    scene: `${ASSET_BASE}scene-practice-wisdom-v1.jpg`,
+    icon: `${ASSET_BASE}icon-heart-seal-v1.jpg`,
+    label: '心境抉择',
+  },
+} as const
+
+const CHOICE_VISUALS = [
+  { scene: PRACTICE_VISUALS.act.scene, icon: PRACTICE_VISUALS.act.icon, mark: '破', path: '迎锋之路' },
+  { scene: PRACTICE_VISUALS.learn.scene, icon: PRACTICE_VISUALS.learn.icon, mark: '藏', path: '归藏之路' },
+  { scene: PRACTICE_VISUALS.observe.scene, icon: PRACTICE_VISUALS.observe.icon, mark: '观', path: '照心之路' },
+] as const
 
 type DailyPracticeType = 'learn' | 'act' | 'observe'
 
@@ -103,7 +127,7 @@ const tabItems: Array<{ id: TabId; label: string; note: string; icon: typeof Hom
 const sceneNames: Record<TabId, string> = {
   cave: '灵台 · 代修道场',
   library: '经阁 · 万法灵炉',
-  destiny: '天命 · 七劫天路',
+  destiny: '天命 · 十八劫天路',
   mirror: '镜门 · 神通归身',
 }
 
@@ -213,7 +237,21 @@ function App() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      ;['scene-lingtai.jpg', 'scene-library.jpg', 'scene-destiny.jpg', 'scene-mirror.jpg', 'scene-main-quest-v2.jpg', 'superego-avatar.jpg'].forEach((file) => {
+      ;[
+        'scene-lingtai.jpg',
+        'scene-library.jpg',
+        'scene-destiny.jpg',
+        'scene-mirror.jpg',
+        'scene-main-quest-v2.jpg',
+        'scene-practice-scripture-v1.jpg',
+        'scene-practice-action-v1.jpg',
+        'scene-practice-wisdom-v1.jpg',
+        'scene-tribulation-map-v1.jpg',
+        'icon-scripture-scroll-v1.jpg',
+        'icon-step-talisman-v1.jpg',
+        'icon-heart-seal-v1.jpg',
+        'superego-avatar.jpg',
+      ].forEach((file) => {
         const image = new Image()
         image.decoding = 'async'
         image.src = `${ASSET_BASE}${file}`
@@ -532,9 +570,9 @@ function TopBar({ game, realmLabel, onShare, onSound, onMenu, onShop }: { game: 
       </div>
       <div className="top-actions">
         <button onClick={onShop} className="energy-button" aria-label="打开功德坊补充命火"><Flame size={16} /><span>命火</span><b>{game.energy}</b><small>{game.energy > game.maxEnergy ? '·储备' : `/${game.maxEnergy}`}</small><Plus size={14} /></button>
-        <button onClick={onShare} className="icon-button" aria-label="生成修为战报"><Share2 size={18} /></button>
-        <button onClick={onSound} className="icon-button" aria-label={game.soundOn ? '关闭声音' : '打开声音'}>{game.soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
-        <button onClick={onMenu} className="icon-button" aria-label="打开菜单"><Menu size={19} /></button>
+        <button onClick={onShare} className="icon-button share-button" aria-label="生成修为战报"><Share2 size={18} /></button>
+        <button onClick={onSound} className="icon-button sound-button" aria-label={game.soundOn ? '关闭声音' : '打开声音'}>{game.soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
+        <button onClick={onMenu} className="icon-button menu-button" aria-label="打开菜单"><Menu size={19} /></button>
       </div>
     </header>
   )
@@ -550,10 +588,10 @@ function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: 
   const story = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
   const storyCleared = game.clearedStoryChapters.includes(story.index)
   const realm = getRealm(game.xp)
-  const taskMeta: Record<DailyPracticeType, { step: string; mark: string; title: string; detail: string; time: string; reward: string; cta: string }> = {
-    learn: { step: '第一步 · 经文入炉', mark: '经', title: scripture.title, detail: '读一句原文和人话解释，再把它炼成今天能用的法。', time: '约 3 分钟', reward: '修为 +28', cta: '开始读这一句' },
-    act: { step: '第二步 · 现实显化', mark: '行', title: action.title, detail: '照着场景提示，在现实里只完成一个看得见的小动作。', time: '约 5 分钟', reward: '能力 +10', cta: '进入行动场景' },
-    observe: { step: '第三步 · 情境参悟', mark: '悟', title: wisdom.title, detail: '在故事里做一次选择，再听超我把背后的道理说明白。', time: '约 2 分钟', reward: '愿力 +12', cta: '开始情境选择' },
+  const taskMeta: Record<DailyPracticeType, { step: string; title: string; detail: string; time: string; reward: string; cta: string; icon: string; scene: string; label: string }> = {
+    learn: { step: '第一步 · 经文入炉', title: scripture.title, detail: '看一幕场景，读一句原文和人话解释，再投入灵炉。', time: '约 3 分钟', reward: '修为 +28', cta: '开始取经', ...PRACTICE_VISUALS.learn },
+    act: { step: '第二步 · 现实显化', title: action.title, detail: '看清现实场景，只完成一个能被看见的小动作。', time: '约 5 分钟', reward: '能力 +10', cta: '进入现场', ...PRACTICE_VISUALS.act },
+    observe: { step: '第三步 · 心境抉择', title: wisdom.title, detail: '在幻境里选一条路，再看它会把你带向哪里。', time: '约 2 分钟', reward: '愿力 +12', cta: '进入心境', ...PRACTICE_VISUALS.observe },
   }
 
   const focus = currentType ? taskMeta[currentType] : null
@@ -577,14 +615,15 @@ function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: 
           {order.map((id, index) => {
             const done = Boolean(game.quests.find((quest) => quest.id === id)?.completed)
             const active = id === currentType
-            return <div key={id} className={`${done ? 'done' : ''} ${active ? 'active' : ''}`}><span>{done ? <Check size={13} /> : index + 1}</span><b>{id === 'learn' ? '读经' : id === 'act' ? '行动' : '问答'}</b></div>
+            return <div key={id} className={`${done ? 'done' : ''} ${active ? 'active' : ''}`}><span>{done ? <Check size={13} /> : index + 1}</span><b>{id === 'learn' ? '取经' : id === 'act' ? '行动' : '抉择'}</b></div>
           })}
         </div>
 
         {focus && currentType ? (
           <div className="practice-current">
             <span className="practice-kicker">{focus.step}</span>
-            <div className="practice-title-line"><i>{focus.mark}</i><div><h1>{focus.title}</h1><p>{focus.detail}</p></div></div>
+            <div className="practice-title-line"><i className="practice-prop-icon"><img src={focus.icon} alt="" /></i><div><h1>{focus.title}</h1><p>{focus.detail}</p></div></div>
+            <div className="practice-scene-peek"><img src={focus.scene} alt={`${focus.label}场景`} /><span><b>{focus.label}</b><small>进入场景后，只会出现一个明确动作</small></span></div>
             <div className="practice-reward-line"><span>{focus.time}</span><i /> <b>{focus.reward}</b><em>完成后自动进入下一步</em></div>
             <button className="game-button primary practice-main-cta" onClick={() => onPractice(currentType)}>{focus.cta}<ArrowRight size={18} /></button>
           </div>
@@ -625,6 +664,7 @@ function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPra
   const scripture = SCRIPTURE_PRACTICES[dailyPracticeIndex(SCRIPTURE_PRACTICES.length)]
   const action = ACTION_PRACTICES[dailyPracticeIndex(ACTION_PRACTICES.length)]
   const wisdom = WISDOM_PRACTICES[dailyPracticeIndex(WISDOM_PRACTICES.length)]
+  const visual = PRACTICE_VISUALS[type]
   const selectedChoice = wisdom.choices.find((choice) => choice.id === choiceId)
   const step = type === 'learn' ? 1 : type === 'act' ? 2 : 3
   const totalStages = type === 'learn' ? 3 : 2
@@ -644,12 +684,14 @@ function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPra
       <div className="practice-task-modal modal-card">
         <button className="modal-close" onClick={onClose} aria-label="暂时退出"><X size={19} /></button>
         <header className="practice-task-head">
+          <img src={visual.icon} alt="" />
           <span>今日修行 · 第 {step} 步 / 共 3 步</span>
-          <b>{type === 'learn' ? '经文入炉' : type === 'act' ? '现实显化' : '情境参悟'}</b>
+          <b>{visual.label}</b>
           <div><i style={{ width: `${((stage + 1) / totalStages) * 100}%` }} /></div>
         </header>
 
         {type === 'learn' && stage === 0 && <section className="practice-scene-card">
+          <div className="practice-scene-art"><img src={visual.scene} alt="经文进入灵炉的修行场景" /><i /></div>
           <span>{scripture.scene}</span><i className="practice-scene-mark">经</i><h2>{scripture.title}</h2>
           <div className="practice-dialogue"><b>超我</b><p>别急着背。今天只读懂一句，然后看看它能不能帮到眼前的你。</p></div>
         </section>}
@@ -661,6 +703,7 @@ function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPra
         </section>}
 
         {type === 'act' && stage === 0 && <section className="practice-scene-card action-scene">
+          <div className="practice-scene-art"><img src={visual.scene} alt="迈出第一步的现实修行场景" /><i /></div>
           <span>{action.scene}</span><i className="practice-scene-mark">行</i><h2>{action.title}</h2><p>{action.situation}</p>
           <div className="practice-dialogue"><b>超我</b><p>{action.dialogue.replace(/^超我[：:]/, '')}</p></div>
         </section>}
@@ -672,10 +715,20 @@ function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPra
         </section>}
 
         {type === 'observe' && stage === 0 && <section className="practice-quiz-card">
-          <span>{wisdom.scene}</span><h2>{wisdom.title}</h2><p>{wisdom.situation}</p>
+          <div className="practice-scene-art"><img src={visual.scene} alt="三条道路展开的心境抉择场景" /><i /></div>
+          <div className="quiz-scene-ribbon"><span>{wisdom.scene}</span><i /><b>心境幻图</b></div>
+          <h2>{wisdom.title}</h2><p>{wisdom.situation}</p>
           <h3>{wisdom.prompt}</h3>
-          <div className="practice-choice-list">{wisdom.choices.map((choice) => <button key={choice.id} className={choiceId === choice.id ? 'selected' : ''} onClick={() => setChoiceId(choice.id)}><i>{choiceId === choice.id ? <Check size={15} /> : String.fromCharCode(65 + wisdom.choices.indexOf(choice))}</i><span>{choice.label}</span></button>)}</div>
-          {selectedChoice && <div className={`practice-feedback ${selectedChoice.correct ? 'aligned' : ''}`}><b>{selectedChoice.correct ? '这条路更有助于成长' : '先看看这条路的后果'}</b><p>{selectedChoice.feedback}</p></div>}
+          <div className="practice-choice-list">{wisdom.choices.map((choice, index) => {
+            const choiceVisual = CHOICE_VISUALS[index % CHOICE_VISUALS.length]
+            const selected = choiceId === choice.id
+            return <button key={choice.id} className={selected ? 'selected' : ''} onClick={() => setChoiceId(choice.id)} aria-pressed={selected}>
+              <i className="choice-scene"><img src={choiceVisual.scene} alt="" style={{ objectPosition: `${22 + index * 28}% 52%` }} /><span>{choiceVisual.mark}</span></i>
+              <span className="choice-copy"><small>命途 {String.fromCharCode(65 + index)} · {choiceVisual.path}</small><b>{choice.label}</b></span>
+              <i className="choice-relic"><img src={choiceVisual.icon} alt="" />{selected && <em><Check size={12} /></em>}</i>
+            </button>
+          })}</div>
+          {selectedChoice && <div className={`practice-feedback ${selectedChoice.correct ? 'aligned' : ''}`}><i><Sparkles size={15} /></i><div><small>超我推演 · 此路回响</small><b>{selectedChoice.correct ? '这条路更有助于成长' : '先看看这条路的后果'}</b><p>{selectedChoice.feedback}</p></div></div>}
           <small className="practice-agency-note">这里不是背标准答案。你可以保留不同看法，但要看清每个选择可能把你带向哪里。</small>
         </section>}
 
@@ -711,14 +764,14 @@ function CaveScreen({ game, directive, onDirective, onQuest, onStory, onLibrary,
       <CultivationPath game={game} directive={directive} />
       <section className="cave-grid">
         <aside className="story-panel glass-panel">
-          <div className="panel-label"><ScrollText size={14} />七劫主线</div>
+          <div className="panel-label"><ScrollText size={14} />十八劫主线</div>
           <div className="story-code">{story.code}</div>
           <h2>{story.title}</h2>
           <p>{story.narrative.slice(0, 91)}……</p>
           <div className="enemy-line"><Swords size={15} /><span>此劫心魔</span><b>{story.enemy}</b></div>
           <button className="game-button primary" onClick={onStory} disabled={storyCleared}>
             {storyCleared ? <Check size={16} /> : game.xp >= story.requirement ? <Play size={16} /> : <LockKeyhole size={16} />}
-            {storyCleared ? '七劫已圆满 · 人间继续' : game.xp >= story.requirement ? '入劫 · 继续主线' : `还差 ${story.requirement - game.xp} 修为`}
+            {storyCleared ? '十八劫已圆满 · 人间继续' : game.xp >= story.requirement ? '入劫 · 继续主线' : `还差 ${story.requirement - game.xp} 修为`}
           </button>
           <div className="chapter-dots">
             {STORY_CHAPTERS.map((chapter) => <i key={chapter.index} className={game.clearedStoryChapters.includes(chapter.index) ? 'passed' : chapter.index === game.storyIndex ? 'active' : ''} />)}
@@ -916,7 +969,7 @@ function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; pat
         })}
       </nav>
 
-      <div className="canon-license-note"><ShieldCheck size={14} /><p><b>原典永久免费：</b>四书五经、佛道原典、科学史名著与多宗教经典均可直接打开，不设付费墙、不消耗命火。每部书独立展示来源与授权，现代译文按完成度如实标注并持续校勘。</p><a href="https://www.cbeta.org/copyright" target="_blank" rel="noreferrer">查看 CBETA 授权<ExternalLink size={12} /></a></div>
+      <div className="canon-license-note"><ShieldCheck size={14} /><p><b>原典与译文永久免费：</b>全文书目必须通过逐段“原文 + 现代译文”完整性检查才会上架，不设付费墙、不消耗命火。每部书独立展示来源、授权与译文说明。</p><a href="https://www.cbeta.org/copyright" target="_blank" rel="noreferrer">查看 CBETA 授权<ExternalLink size={12} /></a></div>
 
       <div className="canon-workbench">
         <aside className="canon-traditions">
@@ -970,6 +1023,13 @@ function CanonVault({ game, patchGame, onStudy, onRead }: { game: GameState; pat
 
 type ReaderMode = 'parallel' | 'source' | 'guide'
 
+function requireCompleteTranslation(section: CanonTextSection) {
+  const complete = section.modern.length === section.original.length
+    && section.original.every((paragraph, index) => paragraph.trim() && section.modern[index]?.trim())
+  if (!complete) throw new Error('这一卷的原文与现代译文尚未完整对齐，已停止展示，避免把占位内容当成译文。')
+  return section
+}
+
 function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: CanonEntry; initialProgress: number; onClose: (progress: number) => void; onStudy: (entry: CanonEntry) => void }) {
   const guideChapters = useMemo(() => canonReaderChapters(entry), [entry])
   const [mode, setMode] = useState<ReaderMode>('parallel')
@@ -1005,7 +1065,7 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
           Math.max(0, Math.floor(initialProgress / 100 * nextDocument.sections.length)),
         )
         const descriptor = nextDocument.sections[nextIndex]
-        const nextSection = await loadCanonSection(entry.id, descriptor.file, controller.signal)
+        const nextSection = requireCompleteTranslation(await loadCanonSection(entry.id, descriptor.file, controller.signal))
         sectionCache.current.set(descriptor.file, nextSection)
         setDocument(nextDocument)
         setSectionIndex(nextIndex)
@@ -1060,7 +1120,7 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
     try {
       if (force) sectionCache.current.delete(descriptor.file)
       const cached = sectionCache.current.get(descriptor.file)
-      const nextSection = cached || await loadCanonSection(entry.id, descriptor.file)
+      const nextSection = requireCompleteTranslation(cached || await loadCanonSection(entry.id, descriptor.file))
       if (!cached) sectionCache.current.set(descriptor.file, nextSection)
       setSectionIndex(nextIndex)
       setSection(nextSection)
@@ -1104,7 +1164,6 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
     setReaderQuery('')
   }
 
-  const coverage = document ? Math.round(document.translationCoverage * 100) : 0
   const currentDescriptor = document?.sections[sectionIndex]
 
   return (
@@ -1131,7 +1190,7 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
           <button className="reader-toc-close" onClick={() => setTocOpen(false)} aria-label="关闭目录"><X size={16} /></button>
           <nav>
             {document
-              ? document.sections.map((item, index) => <button className={sectionIndex === index ? 'active' : ''} key={item.id} onClick={() => void openSection(index)}><small>第 {index + 1} / {document.sections.length}</small><span>{display(item.title)}</span><em>{Math.round(item.translationCoverage * 100)}% 已译</em></button>)
+              ? document.sections.map((item, index) => <button className={sectionIndex === index ? 'active' : ''} key={item.id} onClick={() => void openSection(index)}><small>第 {index + 1} / {document.sections.length}</small><span>{display(item.title)}</span><em>{item.translationCoverage >= 1 ? '原译齐全' : '暂不可读'}</em></button>)
               : guideChapters.map((chapter) => <button key={chapter.id} onClick={() => jumpTo(chapter.id)}><small>{display(chapter.index)}</small><span>{display(chapter.title)}</span></button>)}
           </nav>
           <div className="reader-source-note"><ShieldCheck size={14} /><p>{document ? document.source.notice : '这是应用内先导读本；完整原典、版本与译文以来源页为准。'}</p></div>
@@ -1166,7 +1225,7 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
                 <h2>{display(section.title)}</h2>
                 <div className={`reader-translation-state ${section.translationStatus}`}>
                   <ShieldCheck size={15} />
-                  <p><b>原典全文已入阁</b><span>{section.translationStatus === 'complete' ? document!.translationLabel : `本书现代译文已完成 ${coverage}%，其余段落正在生成与校勘。原典始终可以完整阅读。`}</span></p>
+                  <p><b>原文与现代译文已逐段对齐</b><span>{document!.translationLabel}</span></p>
                 </div>
                 <div className={`reader-paragraphs mode-${mode}`}>
                   {section.original.map((paragraph, paragraphIndex) => {
@@ -1174,9 +1233,7 @@ function CanonReader({ entry, initialProgress, onClose, onStudy }: { entry: Cano
                     return (
                       <article className="reader-pair" data-reader-paragraph={paragraphIndex} key={`${section.id}-${paragraphIndex}`}>
                         {mode !== 'guide' && <div className="reader-source-block"><small>原典 · 第 {paragraphIndex + 1} 段</small><p lang={document!.originalLanguage} dir={document!.originalDirection || 'auto'}>{display(paragraph)}</p></div>}
-                        {mode !== 'source' && (modern
-                          ? <div className="reader-guide-block"><small>现代译文</small><p>{display(modern)}</p></div>
-                          : <div className="reader-guide-block reader-translation-pending"><small>现代译文 · 校勘中</small><p>这段译文正在生成。你可以先读原典，完成后会自动补进同一位置。</p></div>)}
+                        {mode !== 'source' && <div className="reader-guide-block"><small>现代译文</small><p>{display(modern!)}</p></div>}
                       </article>
                     )
                   })}
@@ -1356,15 +1413,33 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
   return (
     <div className="screen destiny-screen">
       <header className="screen-header">
-        <div><span className="eyebrow"><Orbit size={15} />七劫天路 · 超我代修主线</span><h1>他在未来渡劫，只为回来拉你一把</h1><p>愿力为他点燃命火，万法助他炼成神通；你在现实中接住投射，能力才真正归你所有。</p></div>
-        <button className="game-button subtle" onClick={onStory} disabled={allCleared}><ScrollText size={16} />{allCleared ? '七劫已圆满' : '入劫 · 继续主线'}</button>
+        <div><span className="eyebrow"><Orbit size={15} />首发十八劫 · 超我代修主线</span><h1>他在未来渡劫，只为回来拉你一把</h1><p>第一季先走完 18 道与你真实生活有关的劫。每一劫只做一次选择，再把一道力量带回现实。</p></div>
+        <button className="game-button subtle" onClick={onStory} disabled={allCleared}><ScrollText size={16} />{allCleared ? '十八劫已圆满' : '入劫 · 继续主线'}</button>
       </header>
+
+      <section className="tribulation-map-hero">
+        <img src={TRIBULATION_MAP_PATH} alt="十八道劫门沿山路通向天明" />
+        <div className="tribulation-map-shade" />
+        <div className="tribulation-map-copy">
+          <span>当前 · {story.code}</span>
+          <h2>{allCleared ? '首季圆满，真正的人间修行才刚开始' : story.title}</h2>
+          <p>{allCleared ? '你已经把超我的力量收回自己。后续劫数会沿着你的真实人生继续生长。' : `心魔：${story.enemy}。到达 ${story.requirement} 修为后即可入劫。`}</p>
+          <button onClick={onStory} disabled={allCleared}>{allCleared ? <Check size={16} /> : <Play size={16} />}{allCleared ? '十八劫已写入命书' : '进入这一劫'}</button>
+        </div>
+        <div className="campaign-scale" aria-label="长期劫数蓝图">
+          <article className="active"><b>18</b><span>首发十八劫</span><small>当前可完整游玩</small></article>
+          <i />
+          <article><b>108</b><span>百八人生劫</span><small>按成长持续开放</small></article>
+          <i />
+          <article><b>108000</b><span>十万八千劫</span><small>终极神版世界观</small></article>
+        </div>
+      </section>
 
       <section className="destiny-dashboard">
         <article className="current-realm-card">
           <span>当前境界</span><div className="realm-seal"><b>{current.realm.name[0]}</b></div>
           <h2>{current.realm.name} · {current.layer} 层</h2><p>{current.realm.subtitle}</p>
-          <div className="large-progress"><i style={{ width: `${current.progress}%` }} /></div><small>{current.next ? `再得 ${current.remaining} 修为，突破「${current.next.name}」` : '七境已满，继续人间修行'} · 累计 {game.xp}</small>
+          <div className="large-progress"><i style={{ width: `${current.progress}%` }} /></div><small>{current.next ? `再得 ${current.remaining} 修为，突破「${current.next.name}」` : '九境已满，继续人间修行'} · 累计 {game.xp}</small>
         </article>
         <div className="principle-card glass-panel">
           <span>核心法则</span><h2>愿力 ＞ 业力 ＞ 能力</h2>
@@ -1375,7 +1450,7 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
       </section>
 
       <section className="story-road glass-panel">
-        <div className="section-title"><div><span>七劫主线 · 故事进度</span><h2>{allCleared ? '镜门合一，人间路还长' : `下一劫：${story.enemy}`}</h2></div><small>{game.clearedStoryChapters.length} / {STORY_CHAPTERS.length} 劫已渡 · 每一劫都有你的选择</small></div>
+        <div className="section-title"><div><span>十八劫主线 · 故事进度</span><h2>{allCleared ? '镜门合一，人间路还长' : `下一劫：${story.enemy}`}</h2></div><small>{game.clearedStoryChapters.length} / {STORY_CHAPTERS.length} 劫已渡 · 每一劫只做一个关键选择</small></div>
         <div className="story-road-track">
           {STORY_CHAPTERS.map((chapter) => {
             const passed = game.clearedStoryChapters.includes(chapter.index)
@@ -1387,7 +1462,7 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
       </section>
 
       <section className="realm-road">
-        <div className="section-title"><div><span>七境成长 · 长期等级</span><h2>每次修行都会推进，不等同于故事关卡</h2></div><small>七劫讲你们经历了什么；七境讲超我积累了多少力量</small></div>
+        <div className="section-title"><div><span>九境成长 · 长期等级</span><h2>每次修行都会推进，不等同于故事关卡</h2></div><small>十八劫讲你们经历了什么；九境讲超我积累了多少力量</small></div>
         <div className="realm-track-line">
           {REALMS.map((realm, index) => {
             const unlocked = game.xp >= realm.threshold
@@ -1419,9 +1494,23 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
 function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameState; patchGame: (value: Partial<GameState> | ((current: GameState) => GameState)) => void; onComplete: (id: string) => void; setToast: (value: string) => void }) {
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
-  const [heartStatus, setHeartStatus] = useState<'ready' | 'online' | 'local'>('ready')
+  const [heartStatus, setHeartStatus] = useState<'checking' | 'online' | 'offline' | 'local'>('checking')
+  const [lastFailedInput, setLastFailedInput] = useState('')
   const feedRef = useRef<HTMLDivElement>(null)
   const pending = game.projections.filter((projection) => !projection.completed)
+
+  useEffect(() => {
+    if (!game.aiConsent) {
+      setHeartStatus('offline')
+      return
+    }
+    const controller = new AbortController()
+    setHeartStatus('checking')
+    checkSuperegoHealth(controller.signal)
+      .then((health) => setHeartStatus(health.ok && health.configured ? 'online' : 'offline'))
+      .catch(() => setHeartStatus('offline'))
+    return () => controller.abort()
+  }, [game.aiConsent])
 
   useEffect(() => {
     if (feedRef.current) {
@@ -1439,7 +1528,7 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
 
     patchGame((current) => ({
       ...current,
-      messages: [...current.messages, { id: crypto.randomUUID(), role: 'self' as const, text }].slice(-28),
+      messages: [...current.messages, { id: crypto.randomUUID(), role: 'self' as const, text }].slice(-80),
     }))
     setInput('')
     setThinking(true)
@@ -1447,34 +1536,40 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
 
     let response = ''
     let memoryNotes: string[] = []
+    let learned = false
     try {
       if (needsImmediateSupport(text)) {
         response = coachReply(text, game)
         setHeartStatus('local')
+        learned = true
       } else {
         const result = await askSuperego(text, game)
         response = result.reply
         memoryNotes = result.memoryNotes
         setHeartStatus('online')
+        setLastFailedInput('')
+        learned = true
       }
     } catch (error) {
-      response = coachReply(text, game)
-      setHeartStatus('local')
       const detail = error instanceof Error ? error.message : ''
-      setToast(detail.includes('问得有些密') ? detail : '云端心核暂时未连接，已由本地心诀先接住你')
+      response = `智能心核这次没有连接成功${detail ? `：${detail}` : '。'}你的问题已经保存在本机，没有用固定话术冒充回答。连接恢复后，点“重试上一问”，我会带着前面的对话重新认真回答。`
+      setHeartStatus('offline')
+      setLastFailedInput(text)
+      setToast('DeepSeek 暂未回应 · 问题已保存，可一键重试')
     } finally {
       patchGame((current) => {
         const known = new Set(current.coachMemories.map((item) => item.text))
         const additions = memoryNotes
           .filter((item) => !known.has(item))
           .map((item) => ({ id: crypto.randomUUID(), text: item, createdAt: Date.now() }))
-        return growAgent({
+        const next = {
           ...current,
-          coachMemories: [...current.coachMemories, ...additions].slice(-16),
-          messages: [...current.messages, { id: crypto.randomUUID(), role: 'superego' as const, text: response }].slice(-28),
-        }, 'chat', memoryNotes.length
+          coachMemories: [...current.coachMemories, ...additions].slice(-40),
+          messages: [...current.messages, { id: crypto.randomUUID(), role: 'superego' as const, text: response }].slice(-80),
+        }
+        return learned ? growAgent(next, 'chat', memoryNotes.length
           ? `我记住了这次对话里可长期复用的背景：${memoryNotes.join('；')}`
-          : '我从这次对话里更新了对你的理解，但不会把你一时的情绪当成永远不变的性格。')
+          : '我从这次对话里更新了对你的理解，但不会把你一时的情绪当成永远不变的性格。') : next
       })
       setThinking(false)
     }
@@ -1490,7 +1585,7 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
           <div className="coach-profile">
             <div className="coach-avatar"><img src={AVATAR_PATH} alt="超我教练" /><i /></div>
             <div><span>渡劫归来的你</span><h2>超我 · {getRealm(game.xp).realm.name}形态</h2><small><i />镜门已开 · 已悟 {game.arts.length} 门神通</small></div>
-            <span className={`bond heart-${heartStatus}`}>{heartStatus === 'online' ? '智能心核 · 已连接' : heartStatus === 'local' ? '本地心诀 · 代守' : `羁绊 ${Math.min(99, 22 + game.merit)}%`}</span>
+            <span className={`bond heart-${heartStatus}`}>{heartStatus === 'online' ? 'DeepSeek V4 · 已连接' : heartStatus === 'local' ? '安全心诀 · 本地' : heartStatus === 'checking' ? '智能心核 · 检查中' : '智能心核 · 未连接'}</span>
           </div>
           {!game.aiConsent && (
             <div className="ai-consent-card">
@@ -1504,10 +1599,10 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
           )}
           {game.aiConsent && (
             <details className="coach-memory">
-              <summary><BrainCircuit size={13} />心识记忆 · {game.coachMemories.length} 条 <span>仅存本机</span></summary>
+              <summary><BrainCircuit size={13} />心识记忆 · {game.coachMemories.length} 条 <span>对话 {game.messages.length} 条 · 仅存本机</span></summary>
               <div>
                 {game.coachMemories.length
-                  ? game.coachMemories.slice(-6).map((memory) => <p key={memory.id}>{memory.text}</p>)
+                  ? game.coachMemories.slice(-10).map((memory) => <p key={memory.id}>{memory.text}</p>)
                   : <p>我还没有把你的一时情绪写成长期记忆。只有稳定目标、偏好和重要限制值得留下。</p>}
                 <button onClick={() => {
                   patchGame({ coachMemories: [], messages: DEFAULT_STATE.messages })
@@ -1527,6 +1622,7 @@ function MirrorScreen({ game, patchGame, onComplete, setToast }: { game: GameSta
           </div>
           <div className="quick-replies">
             {['先听我把事情说完', '帮我分析一个选择', '我现在很焦虑', '给我一个具体答案'].map((item) => <button disabled={thinking} key={item} onClick={() => void send(item)}>{item}</button>)}
+            {lastFailedInput && <button className="coach-retry" disabled={thinking} onClick={() => void send(lastFailedInput)}><RefreshCw size={12} />重试上一问</button>}
           </div>
           <form className="chat-input" onSubmit={(event) => { event.preventDefault(); void send() }}>
             <textarea disabled={!game.aiConsent || thinking} maxLength={6000} rows={2} value={input} onChange={(event) => setInput(event.target.value)} placeholder={game.aiConsent ? '把事情完整说出来。发生了什么、你最担心什么、希望我帮你想清什么……' : '先开启智能心核，再把真实问题交给我。'} />
@@ -1654,13 +1750,18 @@ function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: ()
     <div className="modal-layer" role="dialog" aria-modal="true" aria-label={chapter.title}>
       <div className="story-modal modal-card">
         <button className="modal-close" onClick={onClose}><X size={19} /></button>
-        <div className="story-visual"><img src={STORY_SCENE_PATH} alt="超我穿过镜门" /><div /><span>{chapter.scene}</span></div>
+        <div className="story-visual"><img src={STORY_SCENE_PATH} alt="超我穿过镜门" /><div /><span>{chapter.scene} · 第 {chapter.index + 1} / {STORY_CHAPTERS.length} 劫</span></div>
         <div className="story-body">
           <span className="story-code">{chapter.code}</span><h2>{chapter.title}</h2><p>{chapter.narrative}</p>
           <div className="boss-card"><span><Swords size={17} /></span><div><small>此劫心魔</small><b>{chapter.enemy}</b></div><em>业力 {Math.max(8, game.karma)}</em></div>
+          <div className="story-flow-cues" aria-label="过劫步骤">
+            <span className="active"><b><Swords size={14} /></b><small>看见心魔</small></span><i />
+            <span><b><Compass size={14} /></b><small>选择破法</small></span><i />
+            <span><b><Sparkles size={14} /></b><small>神通归身</small></span>
+          </div>
           <div className="story-choices">
-            <span>这一次，由你决定超我怎样破劫</span>
-            {chapter.choices.map((item) => <button key={item.id} className={selectedChoice === item.id ? 'active' : ''} onClick={() => setSelectedChoice(item.id)}><i>{selectedChoice === item.id ? <Check size={13} /> : '择'}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}
+            <span>选一条你愿意带回现实的破法</span>
+            {chapter.choices.map((item, index) => <button key={item.id} className={selectedChoice === item.id ? 'active' : ''} onClick={() => setSelectedChoice(item.id)}><i><img src={index === 0 ? PRACTICE_VISUALS.act.icon : PRACTICE_VISUALS.observe.icon} alt="" />{selectedChoice === item.id && <em><Check size={12} /></em>}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}
           </div>
           <div className="choice-consequence"><Sparkles size={14} /><span>此路将影响</span><b>愿力 +{choice.effect.will} · 业力 {choice.effect.karma} · 能力 +{choice.effect.ability}</b></div>
           <div className="story-reward"><Trophy size={16} /><span>过关奖励</span><b>{chapter.reward}</b></div>
@@ -1683,7 +1784,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
   const shareModes: Record<ShareMode, { label: string; eyebrow: string; title: string; quote: string }> = {
     realm: { label: '境界战报', eyebrow: `我的超我 · ${realmLabel}`, title: `${game.playerName}的本命签`, quote: `「${fateSeal}」——愿力 ${game.will}，已有 ${game.arts.length} 门神通归途可循。` },
     rescue: { label: '归身故事', eyebrow: '过去的我卡在原地', title: '未来的我，回来拉了我一把', quote: lastChoice ? `在上一劫，我选择了“${lastChoice.label}”。这不是口号，是我真的走过的一步。` : '我让未来的自己先替我渡劫，再把一小步投回此刻。' },
-    challenge: { label: '共渡此劫', eyebrow: `七劫主线 · ${chapter.code}`, title: `与我共渡「${chapter.enemy}」`, quote: '不用变得很厉害。来点一盏命火，我们各自把今天走下去。' },
+    challenge: { label: '共渡此劫', eyebrow: `十八劫主线 · ${chapter.code}`, title: `与我共渡「${chapter.enemy}」`, quote: '不用变得很厉害。来点一盏命火，我们各自把今天走下去。' },
   }
   const card = shareModes[mode]
   const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${game.referralCode}`
@@ -1774,7 +1875,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
     context.fillRect(74, 1210, 932, 1)
     context.fillStyle = '#ffffff'
     context.font = '600 31px -apple-system, PingFang SC, sans-serif'
-    context.fillText(`愿力 ${game.will}   七劫 ${game.clearedStoryChapters.length}/7   功德 ${game.merit}`, 74, 1277)
+    context.fillText(`愿力 ${game.will}   十八劫 ${game.clearedStoryChapters.length}/18   功德 ${game.merit}`, 74, 1277)
     context.fillStyle = 'rgba(255,255,255,.5)'
     context.font = '27px -apple-system, PingFang SC, sans-serif'
     context.fillText(`邀请码 ${game.referralCode} · 好友过序章双方得命火`, 74, 1350)
@@ -1791,7 +1892,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
         <button className="modal-close" onClick={onClose}><X size={19} /></button>
         <div className="share-preview">
           <img src={STORY_SCENE_PATH} alt="我的超我修行战报" />
-          <div className="share-overlay"><span>SUPEREGO · AI 修行养成</span><div><small>{card.eyebrow}</small><h2>{card.title}</h2><p>{card.quote}</p><em>愿力 {game.will} · 七劫 {game.clearedStoryChapters.length}/7 · 功德 {game.merit}</em></div></div>
+          <div className="share-overlay"><span>SUPEREGO · AI 修行养成</span><div><small>{card.eyebrow}</small><h2>{card.title}</h2><p>{card.quote}</p><em>愿力 {game.will} · 十八劫 {game.clearedStoryChapters.length}/18 · 功德 {game.merit}</em></div></div>
         </div>
         <div className="share-actions">
           <div><span>同行邀请</span><h2>你的故事，选一种方式说</h2><p>不晒打卡，晒一次真实选择。好友完成序章后，你们各得 3 点命火。</p></div>

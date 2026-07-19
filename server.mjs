@@ -34,7 +34,8 @@ function json(res, status, body) {
 }
 
 function allowRequest(req) {
-  const ip = req.socket.remoteAddress || 'unknown'
+  const forwarded = typeof req.headers['x-forwarded-for'] === 'string' ? req.headers['x-forwarded-for'].split(',')[0].trim() : ''
+  const ip = forwarded || req.socket.remoteAddress || 'unknown'
   const now = Date.now()
   const bucket = rateBuckets.get(ip)
   if (!bucket || now - bucket.startedAt > 60 * 60 * 1000) {
@@ -69,7 +70,8 @@ async function serveStatic(req, res) {
   const body = await readFile(filePath)
   res.writeHead(200, {
     'Content-Type': mimeTypes[extname(filePath)] || 'application/octet-stream',
-    'Cache-Control': filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
+    'Cache-Control': filePath.endsWith('index.html') || relativePath.startsWith('canon/') ? 'no-cache' : 'public, max-age=31536000, immutable',
+    'X-Content-Type-Options': 'nosniff',
   })
   res.end(req.method === 'HEAD' ? undefined : body)
 }
@@ -80,7 +82,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, {
         ok: true,
         provider: 'deepseek',
-        model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+        model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro',
         configured: Boolean(process.env.DEEPSEEK_API_KEY),
       })
     }

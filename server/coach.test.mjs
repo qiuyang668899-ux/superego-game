@@ -35,9 +35,11 @@ test('parses DeepSeek JSON and keeps only safe memory notes', async () => {
   })
 
   assert.equal(result.mode, 'answer')
-  assert.equal(result.memoryNotes.length, 2)
+  assert.equal(result.memoryNotes.length, 3)
   assert.match(result.reply, /现金流/)
-  assert.equal(requestBody.model, 'deepseek-v4-flash')
+  assert.equal(requestBody.model, 'deepseek-v4-pro')
+  assert.deepEqual(requestBody.thinking, { type: 'enabled' })
+  assert.equal(requestBody.reasoning_effort, 'high')
   assert.deepEqual(requestBody.response_format, { type: 'json_object' })
   assert.equal(requestBody.stream, false)
   assert.equal(requestBody.messages.at(-1).content, '我该不该换工作？')

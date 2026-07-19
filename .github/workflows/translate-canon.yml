@@ -11,7 +11,7 @@ on:
       max_batches:
         description: Translation requests in this run
         required: true
-        default: '12'
+        default: '2000'
         type: string
   schedule:
     - cron: '23 */3 * * *'
@@ -42,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           CANON_TRANSLATION_MODEL: openai/gpt-4.1-mini
-        run: node scripts/translate-canon.mjs --book "${{ inputs.book || 'auto' }}" --max-batches "${{ inputs.max_batches || '18' }}" --batch-characters "4200"
+        run: node scripts/translate-canon.mjs --book "${{ inputs.book || 'auto' }}" --max-batches "${{ inputs.max_batches || '2000' }}" --batch-characters "18000" --max-items "72"
       - name: Save translated paragraphs
         id: save
         run: |

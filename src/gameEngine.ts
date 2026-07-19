@@ -101,7 +101,15 @@ function normalizeState(value: Partial<GameState>): GameState {
     canonProgress: value.canonProgress && typeof value.canonProgress === 'object' ? value.canonProgress : DEFAULT_STATE.canonProgress,
     aiConsent: Boolean(value.aiConsent),
     aiConsentAt: typeof value.aiConsentAt === 'number' ? value.aiConsentAt : 0,
-    coachMemories: Array.isArray(value.coachMemories) ? value.coachMemories.slice(-16) : [],
+    messages: Array.isArray(value.messages) ? value.messages.slice(-80) : DEFAULT_STATE.messages,
+    coachMemories: Array.isArray(value.coachMemories) ? value.coachMemories.slice(-40) : [],
+  }
+  // Earlier releases ended after seven chapters and kept storyIndex on the
+  // final cleared chapter. When the campaign expands, move that save to the
+  // first uncleared chapter instead of trapping the player on an old ending.
+  const firstUnclearedChapter = STORY_CHAPTERS.find((chapter) => !merged.clearedStoryChapters.includes(chapter.index))
+  if (firstUnclearedChapter && merged.clearedStoryChapters.includes(merged.storyIndex)) {
+    merged.storyIndex = firstUnclearedChapter.index
   }
   const energyPassed = Math.max(0, Date.now() - merged.lastEnergyAt)
   const recovered = Math.floor(energyPassed / (3 * 60 * 60 * 1000))
@@ -354,7 +362,7 @@ export function getCultivationDirective(state: GameState): CultivationDirective 
       reward: `${chapter.reward} · 消耗 2 命火`,
       minutes: 3,
       target: 'story',
-      progress: `七劫 ${state.clearedStoryChapters.length} / ${STORY_CHAPTERS.length}`,
+      progress: `十八劫 ${state.clearedStoryChapters.length} / ${STORY_CHAPTERS.length}`,
     }
   }
 
@@ -404,7 +412,7 @@ export function getCultivationDirective(state: GameState): CultivationDirective 
   if (allCleared) {
     return {
       id: 'after-story',
-      kicker: '七劫已圆满',
+      kicker: '十八劫已圆满',
       title: '今天，让超我认真听你一件事',
       detail: '主线结束不是毕业。把现实里正在发生的困境交给他，让他继续作为你的同行教练。',
       cta: '向超我问道',
@@ -420,11 +428,11 @@ export function getCultivationDirective(state: GameState): CultivationDirective 
     kicker: '今日三修已成',
     title: `去看下一劫：${chapter.enemy}`,
     detail: `还差 ${Math.max(0, chapter.requirement - state.xp)} 修为。你可以先看清心魔，再决定明天怎样走。`,
-    cta: '查看七劫天路',
+    cta: '查看十八劫天路',
     reward: '看清主线与下一境界',
     minutes: 1,
     target: 'destiny',
-    progress: `七劫 ${state.clearedStoryChapters.length} / ${STORY_CHAPTERS.length}`,
+    progress: `十八劫 ${state.clearedStoryChapters.length} / ${STORY_CHAPTERS.length}`,
   }
 }
 

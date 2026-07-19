@@ -1,0 +1,25 @@
+[Unit]
+Description=Superego cyber cultivation game
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/maiyi-tools/superego/current
+EnvironmentFile=/srv/maiyi-tools/superego/shared/.env
+ExecStart=/usr/bin/node /srv/maiyi-tools/superego/current/server.mjs
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/maiyi-tools/superego/shared
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

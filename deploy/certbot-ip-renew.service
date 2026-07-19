@@ -1,0 +1,10 @@
+[Unit]
+Description=Renew Superego public IP TLS certificate
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/certbot-ip/bin/certbot renew --quiet --deploy-hook "systemctl reload nginx"
+NoNewPrivileges=true
+PrivateTmp=true

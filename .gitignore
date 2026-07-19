@@ -8,5 +8,8 @@ vite.config.js
 vite.config.d.ts
 .DS_Store
 .env
+public/assets/icon-*-v1.png
+public/assets/scene-practice-*-v1.png
+public/assets/scene-tribulation-map-v1.png
 .env.*
 !.env.example

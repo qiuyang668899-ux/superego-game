@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-19T13:58:38.687Z",
+  "generatedAt": "2026-07-19T07:08:23.688Z",
   "entries": [
     {
       "id": "analects",
@@ -17,8 +17,8 @@
       "indexFile": "canon/bhagavad-gita/index.json",
       "completeness": "full",
       "originalCharacters": 64867,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "bible",
@@ -71,8 +71,8 @@
       "indexFile": "canon/critique-reason/index.json",
       "completeness": "full",
       "originalCharacters": 1263925,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "dao-de-jing",
@@ -89,8 +89,8 @@
       "indexFile": "canon/dhammapada/index.json",
       "completeness": "full",
       "originalCharacters": 18892,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "diamond-sutra",
@@ -98,8 +98,8 @@
       "indexFile": "canon/diamond-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 6505,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "doctrine-mean",
@@ -116,8 +116,8 @@
       "indexFile": "canon/elements/index.json",
       "completeness": "full",
       "originalCharacters": 462599,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "great-learning",
@@ -143,8 +143,8 @@
       "indexFile": "canon/huayan/index.json",
       "completeness": "full",
       "originalCharacters": 693165,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "jingming-record",
@@ -152,8 +152,8 @@
       "indexFile": "canon/jingming-record/index.json",
       "completeness": "full",
       "originalCharacters": 21340,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "lotus-sutra",
@@ -161,8 +161,8 @@
       "indexFile": "canon/lotus-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 87383,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "mencius",
@@ -179,8 +179,8 @@
       "indexFile": "canon/origin-species/index.json",
       "completeness": "full",
       "originalCharacters": 929820,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "platform-sutra",
@@ -188,8 +188,8 @@
       "indexFile": "canon/platform-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 32629,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "principia",
@@ -197,8 +197,8 @@
       "indexFile": "canon/principia/index.json",
       "completeness": "full",
       "originalCharacters": 797828,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "principles-psychology",
@@ -206,8 +206,8 @@
       "indexFile": "canon/principles-psychology/index.json",
       "completeness": "full",
       "originalCharacters": 3275714,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "quran",
@@ -215,8 +215,8 @@
       "indexFile": "canon/quran/index.json",
       "completeness": "full",
       "originalCharacters": 714366,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "spring-autumn",
@@ -233,8 +233,8 @@
       "indexFile": "canon/surangama-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 85871,
-      "translationCoverage": 0.2601,
-      "translationStatus": "in-progress"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "tanakh",
@@ -242,8 +242,8 @@
       "indexFile": "canon/tanakh/index.json",
       "completeness": "full",
       "originalCharacters": 2609169,
-      "translationCoverage": 0.9849,
-      "translationStatus": "in-progress"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "upanishads",
@@ -251,8 +251,8 @@
       "indexFile": "canon/upanishads/index.json",
       "completeness": "full",
       "originalCharacters": 100646,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "vimalakirti",
@@ -260,8 +260,8 @@
       "indexFile": "canon/vimalakirti/index.json",
       "completeness": "full",
       "originalCharacters": 33425,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "wealth-nations",
@@ -269,8 +269,8 @@
       "indexFile": "canon/wealth-nations/index.json",
       "completeness": "full",
       "originalCharacters": 2209658,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "xunzi",
@@ -278,8 +278,8 @@
       "indexFile": "canon/xunzi/index.json",
       "completeness": "full",
       "originalCharacters": 90404,
-      "translationCoverage": 0.5465,
-      "translationStatus": "in-progress"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "yoga-sutra",
@@ -287,8 +287,8 @@
       "indexFile": "canon/yoga-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 175190,
-      "translationCoverage": 0,
-      "translationStatus": "unavailable"
+      "translationCoverage": 1,
+      "translationStatus": "complete"
     },
     {
       "id": "zhuangzi",
