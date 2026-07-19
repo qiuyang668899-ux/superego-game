@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-19T10:51:49.378Z",
+  "generatedAt": "2026-07-19T13:58:38.687Z",
   "entries": [
     {
       "id": "analects",
@@ -233,7 +233,7 @@
       "indexFile": "canon/surangama-sutra/index.json",
       "completeness": "full",
       "originalCharacters": 85871,
-      "translationCoverage": 0.2247,
+      "translationCoverage": 0.2601,
       "translationStatus": "in-progress"
     },
     {
