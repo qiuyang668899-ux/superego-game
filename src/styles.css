@@ -972,6 +972,112 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .breakthrough-rings i:nth-child(3) { animation-delay: 1s; }
 .spin { animation: slowSpin 1.3s linear infinite; }
 
+/* 第 13—15 轮：一步一修。首页只保留一个主动作。 */
+.practice-home {
+  min-height: calc(100svh - 74px);
+  padding-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(390px, .9fr) minmax(520px, 1.1fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 82px);
+  overflow: hidden;
+}
+.practice-hero { min-height: 650px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.practice-hero::before { content: ''; position: absolute; width: 78%; aspect-ratio: 1; top: 5%; border: 1px solid rgba(196,154,85,.16); border-radius: 50%; box-shadow: 0 0 100px rgba(196,154,85,.08), inset 0 0 80px rgba(196,154,85,.04); }
+.practice-hero-image { width: min(520px, 100%); height: 640px; position: absolute; inset: 0 auto auto 50%; transform: translateX(-50%); overflow: hidden; mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 73%, transparent 99%); }
+.practice-hero-image img { width: 100%; height: 100%; object-fit: cover; object-position: center 27%; filter: contrast(1.04) saturate(.72); }
+.practice-hero-image i { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6,7,6,.72), transparent 22% 77%, rgba(6,7,6,.72)), linear-gradient(0deg, #070807 0, transparent 34%); }
+.practice-hero-status, .practice-hero blockquote { z-index: 2; }
+.practice-hero-status { width: min(410px, 84%); display: flex; justify-content: center; align-items: center; gap: 12px; color: var(--bone-dim); font-size: 10px; }
+.practice-hero-status > span { display: flex; align-items: center; gap: 7px; font-family: var(--serif); letter-spacing: .08em; }
+.practice-hero-status > span i { width: 6px; height: 6px; border-radius: 50%; background: var(--jade); box-shadow: 0 0 9px rgba(118,148,134,.72); }
+.practice-hero-status button { border: 1px solid var(--line); background: rgba(7,8,7,.66); color: var(--gold); min-height: 27px; padding: 0 8px; display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.practice-hero blockquote { width: min(430px, 92%); margin: 14px 0 8px; color: var(--gold-bright); font-family: var(--display); font-size: clamp(14px, 1.35vw, 19px); line-height: 1.7; letter-spacing: .045em; text-align: center; }
+.practice-focus-card { width: min(650px, 100%); padding: clamp(24px, 3vw, 42px); border: 1px solid rgba(196,154,85,.26); background: linear-gradient(150deg, rgba(28,25,19,.96), rgba(10,11,9,.94) 70%); box-shadow: 0 38px 110px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.035); position: relative; }
+.practice-focus-card::before, .practice-focus-card::after { content: ''; position: absolute; width: 36px; height: 36px; border-color: rgba(196,154,85,.5); pointer-events: none; }
+.practice-focus-card::before { left: 10px; top: 10px; border-left: 1px solid; border-top: 1px solid; }
+.practice-focus-card::after { right: 10px; bottom: 10px; border-right: 1px solid; border-bottom: 1px solid; }
+.practice-card-head { display: flex; align-items: center; justify-content: space-between; }
+.practice-card-head > div { display: flex; align-items: baseline; gap: 10px; }
+.practice-card-head span { color: var(--bone-muted); font-size: 9px; letter-spacing: .18em; }
+.practice-card-head b { color: var(--gold-bright); font-family: var(--serif); font-size: 21px; }
+.practice-card-head small { color: var(--jade); font-size: 9px; }
+.practice-step-strip { margin: 18px 0 30px; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.practice-step-strip > div { min-height: 58px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--bone-muted); position: relative; }
+.practice-step-strip > div + div { border-left: 1px solid var(--line-soft); }
+.practice-step-strip span { width: 25px; height: 25px; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; display: grid; place-items: center; font-size: 9px; }
+.practice-step-strip b { font-family: var(--serif); font-size: 11px; }
+.practice-step-strip .active { color: var(--gold-bright); background: linear-gradient(0deg, rgba(196,154,85,.1), transparent); }
+.practice-step-strip .active span { border-color: var(--gold); box-shadow: 0 0 18px rgba(196,154,85,.22); }
+.practice-step-strip .active::after { content: '现在'; position: absolute; bottom: -7px; padding: 1px 6px; background: #17150f; color: var(--gold); font-size: 6px; letter-spacing: .12em; }
+.practice-step-strip .done { color: var(--jade); }
+.practice-step-strip .done span { border-color: rgba(118,148,134,.42); background: rgba(118,148,134,.1); }
+.practice-kicker { color: var(--cinnabar-bright); font-family: var(--serif); font-size: 10px; letter-spacing: .16em; }
+.practice-title-line { margin: 14px 0 17px; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 16px; align-items: start; }
+.practice-title-line > i { width: 58px; height: 66px; border: 1px solid rgba(167,66,49,.54); color: #cb735b; background: rgba(137,49,38,.09); display: grid; place-items: center; font-family: var(--display); font-size: 31px; font-style: normal; }
+.practice-title-line h1 { margin: 0; color: var(--bone); font-family: var(--display); font-weight: 400; font-size: clamp(28px, 3vw, 42px); line-height: 1.25; letter-spacing: .035em; }
+.practice-title-line p { margin: 9px 0 0; color: var(--bone-dim); font-family: var(--serif); font-size: 12px; line-height: 1.85; }
+.practice-reward-line { min-height: 35px; display: flex; align-items: center; gap: 9px; color: var(--bone-muted); font-size: 9px; }
+.practice-reward-line > i { width: 1px; height: 11px; background: var(--line); }
+.practice-reward-line b { color: var(--gold); font-family: var(--serif); font-weight: 500; }
+.practice-reward-line em { margin-left: auto; color: var(--jade); font-style: normal; }
+.practice-main-cta { height: 55px; margin-top: 16px; font-size: 14px; }
+.practice-mini-stats { margin-top: 25px; padding-top: 16px; border-top: 1px solid var(--line-soft); display: grid; grid-template-columns: 1.5fr .8fr .8fr auto; gap: 14px; align-items: center; }
+.practice-mini-stats span { display: grid; gap: 4px; }
+.practice-mini-stats small { color: var(--bone-muted); font-size: 7px; }
+.practice-mini-stats b { color: var(--bone-dim); font-family: var(--serif); font-size: 11px; font-weight: 500; }
+.practice-mini-stats button { border: 0; background: transparent; color: var(--gold); display: flex; align-items: center; gap: 3px; font-size: 8px; cursor: pointer; }
+.practice-task-layer { background: rgba(3,4,3,.9); }
+.practice-task-modal { width: min(650px, 96vw); min-height: min(720px, calc(100vh - 40px)); max-height: calc(100vh - 40px); padding: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; background: radial-gradient(circle at 50% 14%, rgba(146,105,50,.09), transparent 32%), #0d0e0c; }
+.practice-task-head { padding: 24px 62px 18px 28px; border-bottom: 1px solid var(--line-soft); display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: end; }
+.practice-task-head span { color: var(--bone-muted); font-size: 8px; letter-spacing: .16em; }
+.practice-task-head b { grid-row: 1/3; grid-column: 2; color: var(--gold); font-family: var(--display); font-size: 19px; font-weight: 400; }
+.practice-task-head > div { grid-column: 1/-1; height: 2px; margin-top: 10px; background: rgba(255,255,255,.05); }
+.practice-task-head > div i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-dark), var(--gold-bright)); transition: width .25s ease; }
+.practice-scene-card, .practice-scripture-card, .practice-action-card, .practice-quiz-card { min-height: 0; padding: clamp(34px, 6vh, 62px) clamp(28px, 7vw, 68px); overflow-y: auto; }
+.practice-scene-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: radial-gradient(circle at center 22%, rgba(196,154,85,.09), transparent 30%); }
+.practice-scene-card > span, .practice-scripture-card > span, .practice-action-card > span, .practice-quiz-card > span { color: var(--gold); font-size: 8px; letter-spacing: .2em; }
+.practice-scene-mark { width: 76px; height: 88px; margin: 24px auto 18px; border: 1px solid rgba(166,66,49,.48); color: #c86d55; display: grid; place-items: center; font-family: var(--display); font-size: 40px; font-style: normal; box-shadow: inset 0 0 30px rgba(147,53,40,.1); }
+.practice-scene-card h2, .practice-scripture-card h2, .practice-action-card h2, .practice-quiz-card h2 { margin: 0; font-family: var(--display); font-size: clamp(28px, 5vw, 39px); font-weight: 400; line-height: 1.35; }
+.practice-scene-card > p { max-width: 440px; margin: 15px auto 0; color: var(--bone-dim); font-family: var(--serif); font-size: 12px; line-height: 1.9; }
+.practice-dialogue { width: 100%; margin-top: 32px; padding: 16px 18px; border-left: 2px solid var(--jade); background: rgba(90,118,104,.07); display: grid; grid-template-columns: auto 1fr; gap: 12px; text-align: left; }
+.practice-dialogue b { color: var(--jade); font-family: var(--serif); font-size: 10px; }
+.practice-dialogue p { margin: 0; color: #b4b9ad; font-family: var(--serif); font-size: 12px; line-height: 1.8; }
+.practice-scripture-card blockquote { margin: 35px 0 24px; padding: 28px 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--gold-bright); font-family: var(--display); font-size: clamp(24px, 5vw, 36px); line-height: 1.75; text-align: center; }
+.practice-scripture-card > div, .practice-scripture-card label { display: block; padding: 17px; background: rgba(255,255,255,.025); }
+.practice-scripture-card label { margin-top: 10px; border: 1px solid rgba(118,148,134,.18); background: rgba(118,148,134,.04); }
+.practice-scripture-card small, .practice-scripture-card label span { display: block; margin-bottom: 8px; color: var(--jade); font-size: 8px; letter-spacing: .14em; }
+.practice-scripture-card p, .practice-scripture-card label b { margin: 0; color: var(--bone-dim); font-family: var(--serif); font-size: 12px; font-weight: 500; line-height: 1.85; }
+.practice-action-card > h2 { margin: 20px 0 14px; color: var(--gold-bright); }
+.practice-action-card > p { color: var(--bone-dim); font-family: var(--serif); font-size: 12px; line-height: 1.85; }
+.practice-gesture { margin-top: 30px; padding: 19px; border: 1px solid rgba(196,154,85,.2); background: rgba(196,154,85,.04); display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 15px; align-items: center; }
+.gesture-seal { width: 58px; height: 58px; border-radius: 50%; border: 1px solid var(--gold-dark); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-size: 28px; }
+.practice-gesture span { color: var(--gold); font-size: 8px; letter-spacing: .12em; }
+.practice-gesture h3 { margin: 5px 0; color: var(--bone); font-family: var(--serif); font-size: 12px; font-weight: 500; line-height: 1.65; }
+.practice-gesture p { margin: 0; color: var(--bone-muted); font-size: 9px; line-height: 1.6; }
+.practice-gesture > button { min-height: 38px; padding: 0 13px; border: 1px solid var(--gold-dark); background: rgba(196,154,85,.08); color: var(--gold-bright); font-size: 9px; cursor: pointer; }
+.practice-gesture.done { border-color: rgba(118,148,134,.28); background: rgba(118,148,134,.05); }
+.practice-gesture.done .gesture-seal { color: var(--jade); border-color: var(--jade); }
+.practice-gesture.done > button { color: var(--jade); border-color: rgba(118,148,134,.35); }
+.practice-quiz-card > h2 { margin: 8px 0 12px; }
+.practice-quiz-card > p { margin: 0; color: var(--bone-dim); font-family: var(--serif); font-size: 11px; line-height: 1.8; }
+.practice-quiz-card > h3 { margin: 25px 0 11px; color: var(--bone); font-family: var(--serif); font-size: 14px; font-weight: 500; }
+.practice-choice-list { display: grid; gap: 8px; }
+.practice-choice-list button { min-height: 52px; padding: 9px 13px; border: 1px solid var(--line-soft); background: rgba(255,255,255,.018); color: var(--bone-dim); display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 10px; text-align: left; cursor: pointer; }
+.practice-choice-list button i { width: 28px; height: 28px; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; display: grid; place-items: center; color: var(--bone-muted); font-size: 9px; font-style: normal; }
+.practice-choice-list button span { font-family: var(--serif); font-size: 11px; }
+.practice-choice-list button.selected { border-color: var(--gold-dark); background: rgba(196,154,85,.08); color: var(--gold-bright); }
+.practice-choice-list button.selected i { border-color: var(--gold); color: var(--gold); }
+.practice-feedback { margin-top: 10px; padding: 13px 15px; border-left: 2px solid var(--cinnabar-bright); background: rgba(157,63,50,.06); }
+.practice-feedback.aligned { border-color: var(--jade); background: rgba(118,148,134,.06); }
+.practice-feedback b { color: var(--bone); font-family: var(--serif); font-size: 10px; }
+.practice-feedback p { margin: 5px 0 0; color: var(--bone-dim); font-size: 9px; line-height: 1.65; }
+.practice-agency-note { display: block; margin-top: 12px; color: var(--bone-muted); font-size: 8px; line-height: 1.6; }
+.practice-task-actions { min-height: 92px; padding: 15px 28px 18px; border-top: 1px solid var(--line-soft); background: rgba(7,8,7,.92); display: grid; grid-template-columns: 1fr minmax(220px, 280px); gap: 18px; align-items: center; }
+.practice-task-actions small { color: var(--bone-muted); font-size: 8px; }
+.practice-task-actions .game-button { grid-column: 2; height: 50px; }
+.destiny-quest-grid button:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.5); }
+
 @keyframes screenEnter { from { opacity: 0; transform: translateY(8px); } }
 @keyframes sceneReveal { from { opacity: 0; filter: saturate(.45) contrast(1.2) brightness(.35); transform: scale(1.08); } to { opacity: .52; filter: saturate(.72) contrast(1.11) brightness(.72); transform: scale(1.035); } }
 @keyframes sceneBreath { to { transform: scale(1.065); } }
@@ -989,6 +1095,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @keyframes expandRing { 0% { transform: scale(.6); opacity: 0; } 40% { opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 
 @media (max-width: 1180px) {
+  .practice-home { grid-template-columns: minmax(350px, .85fr) minmax(470px, 1.15fr); gap: 20px; }
+  .practice-hero { min-height: 590px; }
+  .practice-hero-image { height: 590px; }
   .main-mission-compass { grid-template-columns: 68px minmax(280px,1fr) minmax(190px,.6fr); }
   .mission-reward { display: none; }
   .cultivation-path { grid-template-columns: 150px 1fr auto; }
@@ -1009,6 +1118,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 
 @media (max-width: 900px) {
+  .practice-home { display: flex; flex-direction: column; gap: 0; padding-top: 0; overflow: visible; }
+  .practice-hero { width: min(640px, 100%); min-height: 470px; }
+  .practice-hero-image { height: 480px; }
+  .practice-focus-card { margin-top: -10px; z-index: 3; }
   .main-mission-compass { grid-template-columns: 64px 1fr; }
   .main-mission-compass > button { grid-column: 1/-1; }
   .cultivation-path { grid-template-columns: 1fr auto; }
@@ -1064,9 +1177,46 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .brand b { font-size: 21px; }
   .brand small { display: none; }
   .top-actions { gap: 2px; }
+  .top-actions .icon-button:not(:last-child) { display: none; }
   .energy-button { padding: 0 7px; }
   .energy-button span, .energy-button small { display: none; }
   .screen { min-height: calc(100vh - 64px); padding: 18px 13px 112px; }
+  .practice-home { min-height: calc(100svh - 64px); padding: 0 12px 94px; }
+  .practice-hero { min-height: 292px; }
+  .practice-hero::before { width: 260px; top: 2%; }
+  .practice-hero-image { width: 330px; height: 315px; }
+  .practice-hero-status { font-size: 8px; }
+  .practice-hero blockquote { margin: 9px 0 5px; font-size: 13px; line-height: 1.55; }
+  .practice-focus-card { margin-top: 0; padding: 19px 17px 18px; }
+  .practice-card-head b { font-size: 17px; }
+  .practice-card-head small { font-size: 7px; }
+  .practice-step-strip { margin: 12px 0 21px; }
+  .practice-step-strip > div { min-height: 47px; }
+  .practice-step-strip span { width: 22px; height: 22px; }
+  .practice-title-line { grid-template-columns: 46px minmax(0,1fr); gap: 11px; margin: 10px 0 12px; }
+  .practice-title-line > i { width: 46px; height: 52px; font-size: 25px; }
+  .practice-title-line h1 { font-size: 26px; }
+  .practice-title-line p { margin-top: 5px; font-size: 10px; line-height: 1.65; }
+  .practice-reward-line { font-size: 8px; }
+  .practice-reward-line em { display: none; }
+  .practice-main-cta { height: 50px; margin-top: 10px; font-size: 12px; }
+  .practice-mini-stats { margin-top: 16px; padding-top: 12px; grid-template-columns: 1.5fr .7fr .7fr; gap: 8px; }
+  .practice-mini-stats button { grid-column: 1/-1; justify-self: end; }
+  .practice-task-modal { width: 100vw; height: 100svh; min-height: 100svh; max-height: 100svh; }
+  .practice-task-head { min-height: 64px; padding: 15px 54px 12px 17px; }
+  .practice-task-head b { font-size: 16px; }
+  .practice-scene-card, .practice-scripture-card, .practice-action-card, .practice-quiz-card { padding: 26px 19px; }
+  .practice-scene-mark { width: 62px; height: 70px; margin: 16px auto 13px; font-size: 33px; }
+  .practice-scene-card h2, .practice-scripture-card h2, .practice-action-card h2, .practice-quiz-card h2 { font-size: 28px; }
+  .practice-dialogue { margin-top: 20px; padding: 13px; }
+  .practice-scripture-card blockquote { margin: 20px 0 15px; padding: 20px 10px; font-size: 25px; }
+  .practice-gesture { margin-top: 20px; padding: 13px; grid-template-columns: 48px 1fr; gap: 11px; }
+  .gesture-seal { width: 46px; height: 46px; font-size: 23px; }
+  .practice-gesture > button { grid-column: 1/-1; width: 100%; }
+  .practice-choice-list button { min-height: 48px; }
+  .practice-task-actions { min-height: 82px; padding: 10px 16px 13px; grid-template-columns: 1fr; gap: 6px; }
+  .practice-task-actions small { text-align: center; }
+  .practice-task-actions .game-button { grid-column: 1; height: 47px; }
   .cave-screen { gap: 12px; }
   .main-mission-compass { min-height: 0; padding: 14px; grid-template-columns: 52px 1fr; gap: 11px; }
   .mission-number { height: 62px; }

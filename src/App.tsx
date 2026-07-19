@@ -47,7 +47,18 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { DAILY_QUESTS, KNOWLEDGE_SAMPLES, REALMS, SHOP_PACKAGES, STORY_CHAPTERS, VOWS } from './gameData'
+import {
+  ACTION_PRACTICES,
+  DAILY_QUESTS,
+  KNOWLEDGE_SAMPLES,
+  PRACTICE_GESTURES,
+  REALMS,
+  SCRIPTURE_PRACTICES,
+  SHOP_PACKAGES,
+  STORY_CHAPTERS,
+  VOWS,
+  WISDOM_PRACTICES,
+} from './gameData'
 import { CANON_ENTRIES, CANON_FAMILIES } from './scriptureData'
 import { hasFullCanon, loadCanonIndex, loadCanonSection } from './canonText'
 import { askSuperego, needsImmediateSupport } from './coachApi'
@@ -75,11 +86,18 @@ const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`
 const AVATAR_PATH = `${ASSET_BASE}superego-avatar.jpg`
 const STORY_SCENE_PATH = `${ASSET_BASE}scene-main-quest-v2.jpg`
 
+type DailyPracticeType = 'learn' | 'act' | 'observe'
+
+function dailyPracticeIndex(length: number) {
+  const now = new Date()
+  return (now.getFullYear() * 372 + (now.getMonth() + 1) * 31 + now.getDate()) % length
+}
+
 const tabItems: Array<{ id: TabId; label: string; note: string; icon: typeof Home }> = [
-  { id: 'cave', label: '灵台', note: '超我代修', icon: Home },
-  { id: 'library', label: '经阁', note: '投卷炼法', icon: LibraryBig },
-  { id: 'destiny', label: '天命', note: '七劫主线', icon: Orbit },
-  { id: 'mirror', label: '镜门', note: '神通归身', icon: MessageCircleMore },
+  { id: 'cave', label: '灵台', note: '今日修行', icon: Home },
+  { id: 'library', label: '经阁', note: '读经炼法', icon: LibraryBig },
+  { id: 'destiny', label: '天命', note: '成长路线', icon: Orbit },
+  { id: 'mirror', label: '镜门', note: '问超我', icon: MessageCircleMore },
 ]
 
 const sceneNames: Record<TabId, string> = {
@@ -187,6 +205,7 @@ function App() {
   const [showShop, setShowShop] = useState(false)
   const [showSoul, setShowSoul] = useState(false)
   const [showPrologue, setShowPrologue] = useState(false)
+  const [practiceTask, setPracticeTask] = useState<DailyPracticeType | null>(null)
   const [breakthrough, setBreakthrough] = useState('')
   const previousRealm = useRef(getRealm(game.xp).index)
 
@@ -232,27 +251,70 @@ function App() {
   }, [game.activeTab])
 
   const realmState = useMemo(() => getRealm(game.xp), [game.xp])
-  const directive = useMemo(() => getCultivationDirective(game), [game])
 
   const patchGame = (patch: Partial<GameState> | ((current: GameState) => GameState)) => {
     setGame((current) => typeof patch === 'function' ? patch(current) : { ...current, ...patch })
   }
 
-  const completeQuest = (questId: string) => {
-    const progress = game.quests.find((quest) => quest.id === questId)
-    if (progress?.completed) return
-    patchGame((current) => growAgent({
-      ...current,
-      xp: current.xp + 18,
-      will: clamp(current.will + 12),
-      karma: clamp(current.karma - 3),
-      ability: clamp(current.ability + (current.will > current.karma ? 4 : 2)),
-      merit: current.merit + 5,
-      energy: questId === 'act' ? Math.min(current.maxEnergy, current.energy + 1) : current.energy,
-      quests: current.quests.map((quest) => quest.id === questId ? { ...quest, completed: true } : quest),
-    }, questId === 'observe' ? 'observe' : questId === 'learn' ? 'learn' : 'act', questId === 'act' ? '你真的完成了一步。我把“少讲道理、多看结果”写进了自己的判断。' : '我从你今天的选择里又多认识了你一点。'))
-    playTone(game.soundOn, 'reward')
-    setToast(questId === 'act' ? '做到了 · 修为 +18，命火 +1' : '今天这件小事做到了 · 修为 +18')
+  const completePracticeTask = (taskType: DailyPracticeType) => {
+    const progress = game.quests.find((quest) => quest.id === taskType)
+    if (progress?.completed) {
+      setPracticeTask(null)
+      setToast('这一修今天已经完成了')
+      return
+    }
+
+    const scripture = SCRIPTURE_PRACTICES[dailyPracticeIndex(SCRIPTURE_PRACTICES.length)]
+    const action = ACTION_PRACTICES[dailyPracticeIndex(ACTION_PRACTICES.length)]
+    const wisdom = WISDOM_PRACTICES[dailyPracticeIndex(WISDOM_PRACTICES.length)]
+    const learnedArt = taskType === 'learn'
+      ? {
+          ...distillKnowledge(`${scripture.source} · ${scripture.title}`, '书籍', `${scripture.original}${scripture.plain}${scripture.question}`),
+          name: scripture.art,
+          school: `${scripture.source} · 今日经修`,
+          realAction: scripture.question,
+        }
+      : null
+
+    patchGame((current) => {
+      const quests = current.quests.map((quest) => quest.id === taskType ? { ...quest, completed: true } : quest)
+      const allCompleted = quests.every((quest) => quest.completed)
+      const base: GameState = {
+        ...current,
+        quests,
+        streak: allCompleted ? current.streak + 1 : current.streak,
+        xp: current.xp + (taskType === 'learn' ? 28 : taskType === 'act' ? 32 : 22),
+        will: clamp(current.will + (taskType === 'learn' ? 5 : taskType === 'observe' ? 12 : 3)),
+        karma: clamp(current.karma - (taskType === 'act' ? 6 : taskType === 'observe' ? 4 : 2)),
+        ability: clamp(current.ability + (taskType === 'act' ? 10 : taskType === 'observe' ? 3 : 2)),
+        insight: clamp(current.insight + (taskType === 'learn' ? 8 : taskType === 'observe' ? 5 : 2)),
+        merit: current.merit + (taskType === 'act' ? 9 : 6),
+        energy: taskType === 'act' ? Math.min(current.maxEnergy, current.energy + 1) : current.energy,
+        arts: learnedArt ? [learnedArt, ...current.arts] : current.arts,
+        knowledge: learnedArt ? [{
+          id: crypto.randomUUID(),
+          title: `${scripture.source} · ${scripture.title}`,
+          type: '书籍',
+          content: `${scripture.original}\n${scripture.plain}`,
+          createdAt: Date.now(),
+          artId: learnedArt.id,
+        }, ...current.knowledge] : current.knowledge,
+      }
+      const note = taskType === 'learn'
+        ? `你读完“${scripture.title}”并投入灵炉。我会把经义炼成能在现实里使用的法。`
+        : taskType === 'act'
+          ? `你在“${action.scene}”完成了真实动作。以后我会优先给你更小、更能落地的一步。`
+          : `你在“${wisdom.scene}”完成了一次情境判断。我记住了你怎样把选择权拿回来。`
+      return growAgent(base, taskType === 'learn' ? 'learn' : taskType === 'act' ? 'act' : 'observe', note)
+    })
+
+    setPracticeTask(null)
+    playTone(game.soundOn, taskType === 'act' ? 'breakthrough' : 'reward')
+    setToast(taskType === 'learn'
+      ? `经文已入炉 · 修为 +28，悟得「${learnedArt?.name}」`
+      : taskType === 'act'
+        ? '现实行动完成 · 能力 +10，命火 +1'
+        : '情境参悟完成 · 愿力 +12')
   }
 
   const finishOnboarding = (name: string, vow: string) => {
@@ -376,18 +438,6 @@ function App() {
     setToast(milestone ? `同行里程碑 ${milestone} 人达成 · 命火 +${3 + bonus}` : '好友完成序章 · 你们各得命火 +3')
   }
 
-  const followDirective = () => {
-    if (directive.target === 'story') {
-      setShowStory(true)
-      return
-    }
-    if (directive.target === 'quest' && directive.questId) {
-      completeQuest(directive.questId)
-      return
-    }
-    patchGame({ activeTab: directive.target as TabId })
-  }
-
   const acceptInitiative = (initiativeId: string) => {
     patchGame((current) => acceptAgentInitiative(current, initiativeId))
     setShowSoul(false)
@@ -421,21 +471,16 @@ function App() {
 
       <main className="game-main">
         {game.activeTab === 'cave' && (
-          <CaveScreen
+          <PracticeHome
             game={game}
-            directive={directive}
-            onDirective={followDirective}
-            onQuest={completeQuest}
+            onPractice={setPracticeTask}
             onStory={() => setShowStory(true)}
-            onLibrary={() => patchGame({ activeTab: 'library' })}
-            onMirror={() => patchGame({ activeTab: 'mirror' })}
+            onDestiny={() => patchGame({ activeTab: 'destiny' })}
             onSoul={() => setShowSoul(true)}
-            onAcceptInitiative={acceptInitiative}
-            onRefreshInitiative={refreshInitiative}
           />
         )}
         {game.activeTab === 'library' && <LibraryScreen game={game} patchGame={patchGame} onProject={projectArt} onShop={() => setShowShop(true)} setToast={setToast} />}
-        {game.activeTab === 'destiny' && <DestinyScreen game={game} onQuest={completeQuest} onStory={() => setShowStory(true)} />}
+        {game.activeTab === 'destiny' && <DestinyScreen game={game} onQuest={(id) => setPracticeTask(id as DailyPracticeType)} onStory={() => setShowStory(true)} />}
         {game.activeTab === 'mirror' && <MirrorScreen game={game} patchGame={patchGame} onComplete={completeProjection} setToast={setToast} />}
       </main>
 
@@ -449,6 +494,7 @@ function App() {
         finishOnboarding(name, vow)
       }} />}
       {showStory && <StoryModal game={game} onClose={() => setShowStory(false)} onAdvance={advanceStory} />}
+      {practiceTask && <PracticeTaskModal key={practiceTask} type={practiceTask} game={game} onClose={() => setPracticeTask(null)} onComplete={completePracticeTask} />}
       {showShare && <ShareModal game={game} realmLabel={`${realmState.realm.name} ${realmState.layer} 层`} onClose={() => setShowShare(false)} setToast={setToast} onShareReward={claimShareReward} onInviteAccepted={simulateInvite} />}
       {showShop && <ShopModal game={game} onClose={() => setShowShop(false)} onPurchase={purchaseEnergy} onShare={() => { setShowShop(false); setShowShare(true) }} />}
       {showSoul && <SoulModal game={game} onClose={() => setShowSoul(false)} onAccept={acceptInitiative} onRefresh={refreshInitiative} />}
@@ -491,6 +537,165 @@ function TopBar({ game, realmLabel, onShare, onSound, onMenu, onShop }: { game: 
         <button onClick={onMenu} className="icon-button" aria-label="打开菜单"><Menu size={19} /></button>
       </div>
     </header>
+  )
+}
+
+function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: GameState; onPractice: (type: DailyPracticeType) => void; onStory: () => void; onDestiny: () => void; onSoul: () => void }) {
+  const order: DailyPracticeType[] = ['learn', 'act', 'observe']
+  const completed = order.filter((id) => game.quests.find((quest) => quest.id === id)?.completed).length
+  const currentType = order.find((id) => !game.quests.find((quest) => quest.id === id)?.completed)
+  const scripture = SCRIPTURE_PRACTICES[dailyPracticeIndex(SCRIPTURE_PRACTICES.length)]
+  const action = ACTION_PRACTICES[dailyPracticeIndex(ACTION_PRACTICES.length)]
+  const wisdom = WISDOM_PRACTICES[dailyPracticeIndex(WISDOM_PRACTICES.length)]
+  const story = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
+  const storyCleared = game.clearedStoryChapters.includes(story.index)
+  const realm = getRealm(game.xp)
+  const taskMeta: Record<DailyPracticeType, { step: string; mark: string; title: string; detail: string; time: string; reward: string; cta: string }> = {
+    learn: { step: '第一步 · 经文入炉', mark: '经', title: scripture.title, detail: '读一句原文和人话解释，再把它炼成今天能用的法。', time: '约 3 分钟', reward: '修为 +28', cta: '开始读这一句' },
+    act: { step: '第二步 · 现实显化', mark: '行', title: action.title, detail: '照着场景提示，在现实里只完成一个看得见的小动作。', time: '约 5 分钟', reward: '能力 +10', cta: '进入行动场景' },
+    observe: { step: '第三步 · 情境参悟', mark: '悟', title: wisdom.title, detail: '在故事里做一次选择，再听超我把背后的道理说明白。', time: '约 2 分钟', reward: '愿力 +12', cta: '开始情境选择' },
+  }
+
+  const focus = currentType ? taskMeta[currentType] : null
+  return (
+    <div className="screen practice-home">
+      <section className="practice-hero" aria-label="今日修行">
+        <div className="practice-hero-image"><img src={AVATAR_PATH} alt="未来超我正在彼岸修行" /><i /></div>
+        <div className="practice-hero-status">
+          <span><i />未来超我 · {game.agent.stage}</span>
+          <button onClick={onSoul}>自主 {game.agent.autonomy}%<ChevronRight size={13} /></button>
+        </div>
+        <blockquote>“别急着改变一生。今天，我只陪你走完眼前这一步。”</blockquote>
+      </section>
+
+      <section className="practice-focus-card">
+        <div className="practice-card-head">
+          <div><span>今日修行</span><b>{completed} / 3</b></div>
+          <small>{completed === 3 ? `连续修行 ${game.streak} 天` : '一次只做一件事'}</small>
+        </div>
+        <div className="practice-step-strip" aria-label="今日三步修行进度">
+          {order.map((id, index) => {
+            const done = Boolean(game.quests.find((quest) => quest.id === id)?.completed)
+            const active = id === currentType
+            return <div key={id} className={`${done ? 'done' : ''} ${active ? 'active' : ''}`}><span>{done ? <Check size={13} /> : index + 1}</span><b>{id === 'learn' ? '读经' : id === 'act' ? '行动' : '问答'}</b></div>
+          })}
+        </div>
+
+        {focus && currentType ? (
+          <div className="practice-current">
+            <span className="practice-kicker">{focus.step}</span>
+            <div className="practice-title-line"><i>{focus.mark}</i><div><h1>{focus.title}</h1><p>{focus.detail}</p></div></div>
+            <div className="practice-reward-line"><span>{focus.time}</span><i /> <b>{focus.reward}</b><em>完成后自动进入下一步</em></div>
+            <button className="game-button primary practice-main-cta" onClick={() => onPractice(currentType)}>{focus.cta}<ArrowRight size={18} /></button>
+          </div>
+        ) : (
+          <div className="practice-current practice-complete">
+            <span className="practice-kicker">今日三修 · 已完成</span>
+            <div className="practice-title-line"><i><Check size={24} /></i><div><h1>你已经把今天过成了一次修行</h1><p>{storyCleared ? '今天不必再加任务。去看看成长路线，或带着这份力量回到生活。' : `下一段故事「${story.title.replace(/^.*?：/, '')}」已经在等你。`}</p></div></div>
+            <button className="game-button primary practice-main-cta" onClick={storyCleared ? onDestiny : onStory}>{storyCleared ? '查看成长路线' : '入劫 · 继续故事'}<ArrowRight size={18} /></button>
+          </div>
+        )}
+
+        <div className="practice-mini-stats" aria-label="修行属性">
+          <span><small>境界</small><b>{realm.realm.name} · {realm.layer} 层</b></span>
+          <span><small>愿力</small><b>{game.will}</b></span>
+          <span><small>能力</small><b>{game.ability}</b></span>
+          <button onClick={onDestiny}>看升级路线<ChevronRight size={13} /></button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function PracticeGesture({ gestureKey, done, onDone }: { gestureKey: keyof typeof PRACTICE_GESTURES; done: boolean; onDone: () => void }) {
+  const gesture = PRACTICE_GESTURES[gestureKey]
+  return (
+    <section className={`practice-gesture ${done ? 'done' : ''}`}>
+      <div className="gesture-seal">{done ? <Check size={28} /> : gesture.mark}</div>
+      <div><span>收势动作 · {gesture.name}</span><h3>{gesture.instruction}</h3><p>{gesture.meaning}</p></div>
+      <button onClick={onDone} aria-pressed={done}>{done ? '动作已完成' : '我做完了'}</button>
+    </section>
+  )
+}
+
+function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPracticeType; game: GameState; onClose: () => void; onComplete: (type: DailyPracticeType) => void }) {
+  const [stage, setStage] = useState(0)
+  const [gestureDone, setGestureDone] = useState(false)
+  const [choiceId, setChoiceId] = useState('')
+  const scripture = SCRIPTURE_PRACTICES[dailyPracticeIndex(SCRIPTURE_PRACTICES.length)]
+  const action = ACTION_PRACTICES[dailyPracticeIndex(ACTION_PRACTICES.length)]
+  const wisdom = WISDOM_PRACTICES[dailyPracticeIndex(WISDOM_PRACTICES.length)]
+  const selectedChoice = wisdom.choices.find((choice) => choice.id === choiceId)
+  const step = type === 'learn' ? 1 : type === 'act' ? 2 : 3
+  const totalStages = type === 'learn' ? 3 : 2
+  const gestureKey = type === 'learn' ? scripture.gesture : type === 'act' ? action.gesture : wisdom.gesture
+  const finalStage = stage === totalStages - 1
+  const alreadyDone = Boolean(game.quests.find((quest) => quest.id === type)?.completed)
+  const reward = type === 'learn' ? '修为 +28' : type === 'act' ? '能力 +10' : '愿力 +12'
+
+  const next = () => setStage((current) => Math.min(totalStages - 1, current + 1))
+  const finish = () => {
+    if (!gestureDone) return
+    onComplete(type)
+  }
+
+  return (
+    <div className="modal-layer practice-task-layer" role="dialog" aria-modal="true" aria-label={`今日修行第 ${step} 步`}>
+      <div className="practice-task-modal modal-card">
+        <button className="modal-close" onClick={onClose} aria-label="暂时退出"><X size={19} /></button>
+        <header className="practice-task-head">
+          <span>今日修行 · 第 {step} 步 / 共 3 步</span>
+          <b>{type === 'learn' ? '经文入炉' : type === 'act' ? '现实显化' : '情境参悟'}</b>
+          <div><i style={{ width: `${((stage + 1) / totalStages) * 100}%` }} /></div>
+        </header>
+
+        {type === 'learn' && stage === 0 && <section className="practice-scene-card">
+          <span>{scripture.scene}</span><i className="practice-scene-mark">经</i><h2>{scripture.title}</h2>
+          <div className="practice-dialogue"><b>超我</b><p>别急着背。今天只读懂一句，然后看看它能不能帮到眼前的你。</p></div>
+        </section>}
+
+        {type === 'learn' && stage === 1 && <section className="practice-scripture-card">
+          <span>{scripture.source} · 今日一句</span><blockquote>“{scripture.original}”</blockquote>
+          <div><small>说人话</small><p>{scripture.plain}</p></div>
+          <label><span>带回现实</span><b>{scripture.question}</b></label>
+        </section>}
+
+        {type === 'act' && stage === 0 && <section className="practice-scene-card action-scene">
+          <span>{action.scene}</span><i className="practice-scene-mark">行</i><h2>{action.title}</h2><p>{action.situation}</p>
+          <div className="practice-dialogue"><b>超我</b><p>{action.dialogue.replace(/^超我[：:]/, '')}</p></div>
+        </section>}
+
+        {type === 'act' && stage === 1 && <section className="practice-action-card">
+          <span>现在只做这一件事</span><h2>{action.action}</h2>
+          <p>不求漂亮，不求彻底。做完这个看得见的动作，就回来收下经验。</p>
+          <PracticeGesture gestureKey={gestureKey} done={gestureDone} onDone={() => setGestureDone(true)} />
+        </section>}
+
+        {type === 'observe' && stage === 0 && <section className="practice-quiz-card">
+          <span>{wisdom.scene}</span><h2>{wisdom.title}</h2><p>{wisdom.situation}</p>
+          <h3>{wisdom.prompt}</h3>
+          <div className="practice-choice-list">{wisdom.choices.map((choice) => <button key={choice.id} className={choiceId === choice.id ? 'selected' : ''} onClick={() => setChoiceId(choice.id)}><i>{choiceId === choice.id ? <Check size={15} /> : String.fromCharCode(65 + wisdom.choices.indexOf(choice))}</i><span>{choice.label}</span></button>)}</div>
+          {selectedChoice && <div className={`practice-feedback ${selectedChoice.correct ? 'aligned' : ''}`}><b>{selectedChoice.correct ? '这条路更有助于成长' : '先看看这条路的后果'}</b><p>{selectedChoice.feedback}</p></div>}
+          <small className="practice-agency-note">这里不是背标准答案。你可以保留不同看法，但要看清每个选择可能把你带向哪里。</small>
+        </section>}
+
+        {type === 'observe' && stage === 1 && <section className="practice-action-card wisdom-result">
+          <span>今日心法</span><h2>“{wisdom.principle}”</h2><p>不是用这句话要求自己，而是在下一次相似处境里，多给自己一个选择。</p>
+          <PracticeGesture gestureKey={gestureKey} done={gestureDone} onDone={() => setGestureDone(true)} />
+        </section>}
+
+        {type === 'learn' && stage === 2 && <section className="practice-action-card scripture-result">
+          <span>经义入炉 · 收势</span><h2>超我将悟得「{scripture.art}」</h2><p>读懂只是取法。做完收势，把这句话交给身体记住。</p>
+          <PracticeGesture gestureKey={gestureKey} done={gestureDone} onDone={() => setGestureDone(true)} />
+        </section>}
+
+        <footer className="practice-task-actions">
+          <small>{alreadyDone ? '今日已完成 · 本次为重温' : finalStage ? `完成可得 ${reward}` : `本页 ${stage + 1} / ${totalStages}`}</small>
+          {!finalStage && <button className="game-button primary" disabled={type === 'observe' && !choiceId} onClick={next}>{type === 'learn' && stage === 0 ? '读这一句' : type === 'learn' ? '我读懂了' : type === 'act' ? '开始这个动作' : '听超我讲明白'}<ArrowRight size={17} /></button>}
+          {finalStage && <button className="game-button primary" disabled={!gestureDone} onClick={finish}>{alreadyDone ? '重温完毕' : `完成修行 · ${reward}`}<Check size={17} /></button>}
+        </footer>
+      </div>
+    </div>
   )
 }
 
@@ -1200,9 +1405,10 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
       <section className="destiny-quests glass-panel">
         <div className="section-title"><div><span>今日三修</span><h2>不求一日飞升，只求愿力不断</h2></div><small>{game.quests.filter((quest) => quest.completed).length} / 3 已完成</small></div>
         <div className="destiny-quest-grid">
-          {DAILY_QUESTS.map((quest) => {
+          {DAILY_QUESTS.map((quest, index) => {
             const done = game.quests.find((item) => item.id === quest.id)?.completed
-            return <button key={quest.id} className={done ? 'done' : ''} onClick={() => onQuest(quest.id)}><span>{done ? <Check /> : quest.icon}</span><b>{quest.title}</b><p>{quest.detail}</p><em>{done ? '今天做过了' : `${quest.minutes} 分钟 · ${quest.reward}`}</em></button>
+            const locked = !done && DAILY_QUESTS.slice(0, index).some((previous) => !game.quests.find((item) => item.id === previous.id)?.completed)
+            return <button key={quest.id} className={done ? 'done' : ''} disabled={locked} onClick={() => onQuest(quest.id)}><span>{done ? <Check /> : locked ? <LockKeyhole /> : quest.icon}</span><b>{quest.title}</b><p>{quest.detail}</p><em>{done ? '今天做过了 · 可重温' : locked ? '完成上一步后开启' : `${quest.minutes} 分钟 · ${quest.reward}`}</em></button>
           })}
         </div>
       </section>
@@ -1716,11 +1922,11 @@ function GameMenu({ game, onClose, onRestart, onReplay }: { game: GameState; onC
         <div className="profile-strip"><span>{game.playerName[0]}</span><div><b>{game.playerName}</b><small>本命愿 · {game.primeVow}</small></div><em>{getRealm(game.xp).realm.name}境</em></div>
         <div className="menu-stats"><span><b>{game.xp}</b>总修为</span><span><b>{game.agent.autonomy}</b>人格自主</span><span><b>{game.merit}</b>功德</span></div>
         <button className="menu-item" onClick={onReplay}><Play size={17} />重临序章<span>再看一次镜门立誓</span></button>
-        <button className="menu-item"><CircleEllipsis size={17} />版本纪事<span>第 12 轮 · 七劫归身终局版</span></button>
+        <button className="menu-item"><CircleEllipsis size={17} />版本纪事<span>第 15 轮 · 一步一修版</span></button>
         <div className="iteration-chronicle">
-          <span><b>第 10 轮</b><em>主线归位</em><small>一个主按钮、七劫与七境分流、完整升级路线</small></span>
-          <span><b>第 11 轮</b><em>人格入命</em><small>渡劫选择、彼岸来信、共同命书与自主反馈</small></span>
-          <span><b>第 12 轮</b><em>同行传火</em><small>三类战报、本命签、邀请里程碑与克制付费</small></span>
+          <span><b>第 13 轮</b><em>一眼就懂</em><small>首屏只留当前任务、一个主按钮与三步进度</small></span>
+          <span><b>第 14 轮</b><em>三修归一</em><small>读经、现实行动、情境问答统一为一步一屏</small></span>
+          <span><b>第 15 轮</b><em>身心同修</em><small>固定收势动作、即时反馈、连续修行与自主选择</small></span>
         </div>
         <button className="menu-item danger" onClick={onRestart}><RotateCcw size={17} />重开轮回<span>清除本地进度</span></button>
         <small>本作品以自我成长与行为实践为核心，不宣称超自然、医疗或治疗效果。</small>

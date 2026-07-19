@@ -11,9 +11,144 @@ export const REALMS: Realm[] = [
 ]
 
 export const DAILY_QUESTS = [
-  { id: 'observe', icon: '照', title: '照见本心', detail: '闭眼三息，说出此刻真正的感受', reward: '愿力 +12', minutes: 1 },
-  { id: 'learn', icon: '炼', title: '投一卷入灵炉', detail: '把一段经典、笔记或困境交给超我参悟', reward: '修为 +18', minutes: 3 },
-  { id: 'act', icon: '显', title: '接住一次投射', detail: '让超我的神通在现实中显化一步', reward: '能力 +10', minutes: 5 },
+  { id: 'learn', icon: '经', title: '读一段经文', detail: '读懂一句人话，再投入灵炉', reward: '修为 +28', minutes: 3 },
+  { id: 'act', icon: '行', title: '完成一个现实动作', detail: '照着场景指引，只做一个小动作', reward: '能力 +10', minutes: 5 },
+  { id: 'observe', icon: '悟', title: '做一道情境选择', detail: '在故事里选一次，再听超我讲明白', reward: '愿力 +12', minutes: 2 },
+]
+
+export const PRACTICE_GESTURES = {
+  heart: {
+    name: '抚心',
+    mark: '心',
+    instruction: '把右手轻放在心口，慢慢呼吸三次。只感受，不评价。',
+    meaning: '先和此刻的自己站在一起。',
+  },
+  release: {
+    name: '松拳',
+    mark: '松',
+    instruction: '轻轻握拳，再慢慢松开，重复三次。',
+    meaning: '提醒身体：我可以不立刻被情绪推着走。',
+  },
+  step: {
+    name: '前行',
+    mark: '行',
+    instruction: '站起来，向前迈一步，再回到原位。',
+    meaning: '用身体记住：再小的一步，也是开始。',
+  },
+}
+
+export const SCRIPTURE_PRACTICES = [
+  {
+    id: 'water',
+    scene: '雨落青石 · 若水关',
+    source: '《道德经》',
+    title: '不必每次都硬扛',
+    original: '上善若水，水善利万物而不争。',
+    plain: '真正有力量的人，不是什么都硬碰。能绕、能停、能借力，也是在往前。',
+    question: '今天哪件事，你可以换一种更省力的做法？',
+    art: '若水转圜诀',
+    gesture: 'release' as const,
+  },
+  {
+    id: 'practice',
+    scene: '晨钟初响 · 温故台',
+    source: '《论语》',
+    title: '知道以后，要再做一次',
+    original: '学而时习之，不亦说乎？',
+    plain: '学会不是看懂那一下，而是隔一段时间再做一次，直到它真的变成你的。',
+    question: '你愿意把哪一个小动作再练一次？',
+    art: '温故成行诀',
+    gesture: 'step' as const,
+  },
+  {
+    id: 'no-attachment',
+    scene: '空山镜湖 · 无住境',
+    source: '《金刚经》',
+    title: '别把一个念头当成全部的你',
+    original: '应无所住，而生其心。',
+    plain: '念头来了可以看见，但不必住进去。你仍然可以在当下重新选择。',
+    question: '此刻哪个念头最容易把你困住？',
+    art: '无住观心诀',
+    gesture: 'heart' as const,
+  },
+]
+
+export const ACTION_PRACTICES = [
+  {
+    id: 'two-minutes',
+    scene: '案前灯影 · 万事难始',
+    title: '只开始两分钟',
+    situation: '任务堆在眼前，你越想一次做好，越不愿打开它。',
+    dialogue: '超我：今天不许你做完。只打开那个页面，写下第一行，两分钟就停。',
+    action: '打开你最想拖延的任务，只做第一个看得见的动作。',
+    proof: '页面已打开，第一步已完成',
+    gesture: 'step' as const,
+  },
+  {
+    id: 'name-feeling',
+    scene: '镜门回声 · 心浪将起',
+    title: '先说清自己怎么了',
+    situation: '消息弹出来，你的身体先紧了，脑中已经开始预演最坏结果。',
+    dialogue: '超我：先别回。用一句话告诉我——“我现在有点……”。',
+    action: '放下手机三次呼吸，说出一个准确感受，再决定要不要回复。',
+    proof: '我已经说出此刻的感受',
+    gesture: 'heart' as const,
+  },
+  {
+    id: 'ask-help',
+    scene: '负岳荒原 · 同行驿',
+    title: '把求助说具体',
+    situation: '你已经很累，却仍觉得开口会显得自己不够强。',
+    dialogue: '超我：不要说“帮帮我”。只告诉一个可信的人，你具体需要哪一步帮助。',
+    action: '给一个可信的人发一句具体请求：你能否在____上帮我____？',
+    proof: '我已经发出一个具体请求',
+    gesture: 'release' as const,
+  },
+]
+
+export const WISDOM_PRACTICES = [
+  {
+    id: 'emotion-choice',
+    scene: '心浪幻境 · 消息来时',
+    title: '情绪来了，谁来掌舵？',
+    situation: '一句刺耳的话让你瞬间生气。你最想立刻回击。',
+    prompt: '哪一个选择更接近“先看见，再决定”？',
+    choices: [
+      { id: 'fight', label: '马上回击，不能让自己吃亏', correct: false, feedback: '这会让情绪替你做决定。保护自己没有错，但可以等身体先稳下来。' },
+      { id: 'suppress', label: '假装没事，把情绪压下去', correct: false, feedback: '压住不等于看见。被忽略的情绪通常会换一种方式回来。' },
+      { id: 'pause', label: '先停三次呼吸，说清感受再回复', correct: true, feedback: '对。觉察不是忍气吞声，而是把选择权从情绪手里拿回来。' },
+    ],
+    principle: '情绪是信号，不是命令。',
+    gesture: 'heart' as const,
+  },
+  {
+    id: 'perfect-choice',
+    scene: '完美心魔 · 开工之前',
+    title: '怎样才算真正开始？',
+    situation: '你想把方案一次做漂亮，结果迟迟没有动手。',
+    prompt: '此刻最有用的选择是什么？',
+    choices: [
+      { id: 'plan', label: '再找一些资料，等更有把握', correct: false, feedback: '资料可能有用，但此刻继续收集，更像是在躲开第一次不完美。' },
+      { id: 'tiny', label: '先做一个能被看见的粗糙版本', correct: true, feedback: '对。行动会产生反馈，反馈才会让下一步更准确。' },
+      { id: 'wait', label: '等状态好一点再开始', correct: false, feedback: '状态经常在开始以后才出现，不必等它先来。' },
+    ],
+    principle: '不用做好，先做出来。',
+    gesture: 'step' as const,
+  },
+  {
+    id: 'ideal-choice',
+    scene: '无相天阶 · 理想凝视',
+    title: '理想的自己该做什么？',
+    situation: '你看着理想目标，越看越觉得现在的自己不配。',
+    prompt: '哪种关系更能让人长期成长？',
+    choices: [
+      { id: 'judge', label: '让理想自我不断批评现在的我', correct: false, feedback: '羞耻能短暂推动，却很难支撑长期改变。理想不该成为鞭子。' },
+      { id: 'forget', label: '干脆不要理想，就不会痛苦', correct: false, feedback: '放弃方向会减少一时压力，也会让愿力失去落点。' },
+      { id: 'coach', label: '让理想自我成为教练，每次只拉一步', correct: true, feedback: '对。理想负责指路和陪伴，不负责审判此刻的你。' },
+    ],
+    principle: '愿力指路，不用理想惩罚自己。',
+    gesture: 'release' as const,
+  },
 ]
 
 export const STORY_CHAPTERS = [
