@@ -6,9 +6,9 @@
 
 ## 手机在线体验
 
-[打开完整在线版](https://8.152.201.187/)
+[打开完整在线版](https://mortals.online/)
 
-完整版本部署在自托管服务端，包含 DeepSeek 智能心核和全部经藏；模型密钥不会进入网页代码。`mortals.online` 已写入服务器配置，域名解析生效后即可切换；当前公网 IP 使用受信任 HTTPS 证书并自动续签。[GitHub Pages](https://qiuyang668899-ux.github.io/superego-game/) 仅保留静态预览。
+完整版本已部署在自托管服务端，包含 DeepSeek 智能心核和全部经藏；模型密钥不会进入网页代码。`mortals.online` 已启用受信任 HTTPS 证书，并通过 TLS-ALPN 校验自动续签。[GitHub Pages](https://qiuyang668899-ux.github.io/superego-game/) 仅保留静态预览。
 
 ## 本地预览
 

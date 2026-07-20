@@ -1,9 +1,9 @@
 [Unit]
-Description=Check Superego domain DNS every five minutes
+Description=Check Superego domain DNS and TLS certificate twice daily
 
 [Timer]
-OnBootSec=1min
-OnUnitActiveSec=5min
+OnBootSec=5min
+OnUnitActiveSec=12h
 Persistent=true
 
 [Install]

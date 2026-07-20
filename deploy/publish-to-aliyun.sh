@@ -26,6 +26,10 @@ tar -czf "${ARCHIVE}" dist server server.mjs package.json package-lock.json
 "${SCP[@]}" .env "${SERVER_USER}@${SERVER_HOST}:${REMOTE_ENV}"
 "${SCP[@]}" deploy/superego.service "${SERVER_USER}@${SERVER_HOST}:/tmp/superego.service"
 "${SCP[@]}" deploy/superego.nginx.conf "${SERVER_USER}@${SERVER_HOST}:/tmp/superego.nginx.conf"
+"${SCP[@]}" deploy/enable-domain-https-when-ready.sh "${SERVER_USER}@${SERVER_HOST}:/tmp/enable-domain-https-when-ready.sh"
+"${SCP[@]}" deploy/superego-domain-ready.service "${SERVER_USER}@${SERVER_HOST}:/tmp/superego-domain-ready.service"
+"${SCP[@]}" deploy/superego-domain-ready.timer "${SERVER_USER}@${SERVER_HOST}:/tmp/superego-domain-ready.timer"
+"${SCP[@]}" deploy/superego-domain-tls.nginx.conf "${SERVER_USER}@${SERVER_HOST}:/tmp/superego-domain-tls.nginx.conf"
 
 "${SSH[@]}" "set -euo pipefail
 install -d -m 755 '${APP_ROOT}/releases' '${APP_ROOT}/shared'
@@ -40,13 +44,26 @@ chown -R www-data:www-data '${APP_ROOT}/shared'
 ln -sfn '${APP_ROOT}/releases/${RELEASE_ID}' '${APP_ROOT}/current.next'
 mv -Tf '${APP_ROOT}/current.next' '${APP_ROOT}/current'
 install -m 644 /tmp/superego.service /etc/systemd/system/superego.service
+install -m 755 /tmp/enable-domain-https-when-ready.sh /usr/local/sbin/enable-superego-domain-https
+install -m 644 /tmp/superego-domain-ready.service /etc/systemd/system/superego-domain-ready.service
+install -m 644 /tmp/superego-domain-ready.timer /etc/systemd/system/superego-domain-ready.timer
+install -d -m 755 /usr/local/share/superego
+install -m 644 /tmp/superego-domain-tls.nginx.conf /usr/local/share/superego/superego-domain-tls.nginx.conf
+if [ ! -x /opt/acme.sh/acme.sh ]; then
+  git clone --depth 1 https://github.com/acmesh-official/acme.sh.git /opt/acme.sh
+fi
 if [ ! -f /etc/letsencrypt/live/mortals.online/fullchain.pem ]; then
   install -m 644 /tmp/superego.nginx.conf /etc/nginx/sites-available/superego
 fi
-rm -f /tmp/superego.service /tmp/superego.nginx.conf
+rm -f /tmp/superego.service /tmp/superego.nginx.conf \
+  /tmp/enable-domain-https-when-ready.sh \
+  /tmp/superego-domain-ready.service \
+  /tmp/superego-domain-ready.timer \
+  /tmp/superego-domain-tls.nginx.conf
 ln -sfn /etc/nginx/sites-available/superego /etc/nginx/sites-enabled/superego
 systemctl daemon-reload
 systemctl enable superego.service
+systemctl enable --now superego-domain-ready.timer
 systemctl restart superego.service
 nginx -t
 systemctl reload nginx
