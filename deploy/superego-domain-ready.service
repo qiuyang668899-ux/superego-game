@@ -1,0 +1,10 @@
+[Unit]
+Description=Enable Superego domain HTTPS after DNS becomes ready
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/enable-superego-domain-https
+NoNewPrivileges=true
+PrivateTmp=true
