@@ -64,6 +64,7 @@ import { CANON_ENTRIES, CANON_FAMILIES } from './scriptureData'
 import { hasFullCanon, loadCanonIndex, loadCanonSection } from './canonText'
 import { askSuperego, checkSuperegoHealth, needsImmediateSupport } from './coachApi'
 import { getFirstJourneyStage } from './firstJourney.mjs'
+import { applySharePracticeReward, getBreakthroughGuide, getLocalDateKey } from './breakthroughRoutes.mjs'
 import {
   buildProjection,
   acceptAgentInitiative,
@@ -85,6 +86,7 @@ import {
 } from './gameEngine'
 import type { CanonEntry, CanonFamily } from './scriptureData'
 import type { CanonDocumentIndex, CanonTextSection } from './canonText'
+import type { BreakthroughAction, BreakthroughGuide } from './breakthroughRoutes.mjs'
 import type { CultivationArt, GameState, KnowledgeType, TabId } from './types'
 
 const ASSET_BASE = `${import.meta.env.BASE_URL}assets/`
@@ -373,6 +375,37 @@ function App() {
         : '情境参悟完成 · 愿力 +12')
   }
 
+  const openBreakthroughRoute = (action: BreakthroughAction) => {
+    setShowStory(false)
+    if (action === 'learn' || action === 'act' || action === 'observe') {
+      setPracticeTask(action)
+      return
+    }
+    if (action === 'library') {
+      patchGame({ activeTab: 'library' })
+      setToast('已为你打开万卷灵炉 · 选一卷经文开始修行')
+      return
+    }
+    if (action === 'mirror') {
+      patchGame({ activeTab: 'mirror' })
+      setToast('已为你打开镜门 · 完成正在等待的现实投影')
+      return
+    }
+    if (action === 'share') {
+      setShowShare(true)
+      return
+    }
+    setShowShop(true)
+  }
+
+  const claimSharePracticeReward = () => {
+    const today = getLocalDateKey()
+    const alreadyClaimed = game.shareRewardDate === today
+    patchGame((current) => applySharePracticeReward(current, today).state)
+    playTone(game.soundOn, alreadyClaimed ? 'soft' : 'reward')
+    setToast(alreadyClaimed ? '今日同行共修已经结算过了' : '同行发愿完成 · 修为 +10（今日一次）')
+  }
+
   const finishOnboarding = (name: string, vow: string) => {
     const playerName = name.trim() || '修行者'
     patchGame((current) => configureAgent({
@@ -568,10 +601,10 @@ function App() {
         }
         finishOnboarding(name, vow)
       }} />}
-      {showStory && <StoryModal game={game} onClose={() => setShowStory(false)} onAdvance={advanceStory} />}
+      {showStory && <StoryModal game={game} onClose={() => setShowStory(false)} onAdvance={advanceStory} onRoute={openBreakthroughRoute} />}
       {tribulationReward && <TribulationRewardModal chapterIndex={tribulationReward.chapterIndex} choiceLabel={tribulationReward.choiceLabel} onClose={() => setTribulationReward(null)} />}
       {practiceTask && <PracticeTaskModal key={practiceTask} type={practiceTask} game={game} onClose={() => setPracticeTask(null)} onComplete={completePracticeTask} />}
-      {showShare && <ShareModal game={game} realmLabel={`${realmState.realm.name} ${realmState.layer} 层`} onClose={() => setShowShare(false)} setToast={setToast} />}
+      {showShare && <ShareModal game={game} realmLabel={`${realmState.realm.name} ${realmState.layer} 层`} onClose={() => setShowShare(false)} setToast={setToast} onShared={claimSharePracticeReward} />}
       {showShop && <ShopModal game={game} onClose={() => setShowShop(false)} onShare={() => { setShowShop(false); setShowShare(true) }} />}
       {showSoul && <SoulModal game={game} onClose={() => setShowSoul(false)} onAccept={acceptInitiative} onRefresh={refreshInitiative} />}
       {showMenu && <GameMenu game={game} onClose={() => setShowMenu(false)} onRestart={restart} onReplay={() => { setShowMenu(false); setShowPrologue(true) }} onExport={downloadSave} onImport={handleImport} onRestore={restoreBackupSave} />}
@@ -1476,6 +1509,8 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
   const current = getRealm(game.xp)
   const story = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
   const allCleared = game.clearedStoryChapters.length >= STORY_CHAPTERS.length
+  const guide = getBreakthroughGuide(game, story.requirement)
+  const storyLocked = !allCleared && guide.deficit > 0
   return (
     <div className="screen destiny-screen">
       <header className="screen-header">
@@ -1489,8 +1524,8 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
         <div className="tribulation-map-copy">
           <span>当前 · {story.code}</span>
           <h2>{allCleared ? '首季圆满，真正的人间修行才刚开始' : story.title}</h2>
-          <p>{allCleared ? '你已经把超我的力量收回自己。后续劫数会沿着你的真实人生继续生长。' : `心魔：${story.enemy}。到达 ${story.requirement} 修为后即可入劫。`}</p>
-          <button onClick={onStory} disabled={allCleared}>{allCleared ? <Check size={16} /> : <Play size={16} />}{allCleared ? '十八劫已写入命书' : '进入这一劫'}</button>
+          <p>{allCleared ? '你已经把超我的力量收回自己。后续劫数会沿着你的真实人生继续生长。' : storyLocked ? `心魔：${story.enemy}。当前 ${game.xp} / ${story.requirement} 修为，还差 ${guide.deficit}；路线已经为你排好。` : `心魔：${story.enemy}。修为已足，可以入劫。`}</p>
+          <button onClick={onStory} disabled={allCleared}>{allCleared ? <Check size={16} /> : storyLocked ? <Compass size={16} /> : <Play size={16} />}{allCleared ? '十八劫已写入命书' : storyLocked ? '查看破境路线' : '进入这一劫'}</button>
         </div>
         <div className="campaign-scale" aria-label="长期劫数蓝图">
           <article className="active"><b>18</b><span>首发十八劫</span><small>当前可完整游玩</small></article>
@@ -1500,6 +1535,12 @@ function DestinyScreen({ game, onQuest, onStory }: { game: GameState; onQuest: (
           <article><b>108000</b><span>十万八千劫</span><small>终极神版世界观</small></article>
         </div>
       </section>
+
+      {storyLocked && <section className="destiny-breakthrough-banner" aria-label="当前破境指引">
+        <div className="destiny-breakthrough-seal"><LockKeyhole size={19} /><b>{guide.deficit}</b><small>尚缺修为</small></div>
+        <div className="destiny-breakthrough-copy"><span>系统已算好最短路径</span><h2>{guide.recommended.slice(0, 2).map((step) => step.label).join(' ＋ ')}</h2><div><i style={{ width: `${guide.percent}%` }} /></div><small>当前 {guide.current} / {guide.requirement} · 预计 {guide.recommended.length} 步达到入劫条件</small></div>
+        <button onClick={onStory}>展开全部路径<ArrowRight size={17} /></button>
+      </section>}
 
       <section className="destiny-dashboard">
         <article className="current-realm-card">
@@ -1806,10 +1847,44 @@ function Onboarding({ onFinish, isReplay = false }: { onFinish: (name: string, v
   )
 }
 
-function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: () => void; onAdvance: (choiceId: string) => void }) {
+function BreakthroughGuidePanel({ guide, onRoute }: { guide: BreakthroughGuide; onRoute: (action: BreakthroughAction) => void }) {
+  const routeIcons: Record<string, string> = {
+    learn: PRACTICE_VISUALS.learn.icon,
+    act: PRACTICE_VISUALS.act.icon,
+    observe: PRACTICE_VISUALS.observe.icon,
+  }
+  return <section className="breakthrough-guide" aria-label="破境修为获取路线">
+    <header className="breakthrough-lock-head">
+      <span className="breakthrough-lock-seal"><LockKeyhole size={20} /></span>
+      <div><small>这一劫还未锁死，只差一段修行</small><h3>当前 {guide.current} / {guide.requirement} 修为</h3></div>
+      <em>尚缺 {guide.deficit}</em>
+    </header>
+    <div className="breakthrough-progress"><i style={{ width: `${guide.percent}%` }} /><span>{guide.percent}%</span></div>
+    <div className="breakthrough-plan">
+      <span>为你排好的最短路线</span>
+      <div>{guide.recommended.map((step, index) => <span key={`${step.action}-${index}`}><b>{index + 1}</b>{step.label}<em>+{step.reward}</em>{index < guide.recommended.length - 1 && <ArrowRight size={13} />}</span>)}</div>
+      <small>完成后预计获得 {guide.projected} 修为，足够开启本劫；你也可以改走下面任意一路。</small>
+    </div>
+    <div className="breakthrough-route-grid">
+      {guide.routes.map((route) => {
+        const recommended = guide.recommended.some((step) => step.action === route.action)
+        return <button key={route.id} aria-label={`${route.title}：${route.label}，${route.status}`} className={`${recommended ? 'recommended' : ''} ${route.ready ? '' : 'unavailable'}`} disabled={!route.ready} onClick={() => onRoute(route.action)}>
+          <i className="breakthrough-route-icon">{route.id === 'share' ? <Users size={25} /> : <img src={routeIcons[route.id]} alt="" />}</i>
+          <span><small>{route.title}{recommended && <em>推荐</em>}</small><b>{route.label}</b><p>{route.detail}</p></span>
+          <strong>{route.status}<ChevronRight size={15} /></strong>
+        </button>
+      })}
+    </div>
+    <button className="breakthrough-support" onClick={() => onRoute('shop')}><Flame size={18} /><span><b>命火不够开炉或入劫？</b><small>可等自然恢复、完成现实投影，或查看补给；命火不会直接购买修为。</small></span><ChevronRight size={17} /></button>
+    <p className="breakthrough-trust"><ShieldCheck size={13} />每日分享修行可得 +10 修为；真实好友邀请与付费奖励仍需服务端验签，未开放前不会虚假到账。</p>
+  </section>
+}
+
+function StoryModal({ game, onClose, onAdvance, onRoute }: { game: GameState; onClose: () => void; onAdvance: (choiceId: string) => void; onRoute: (action: BreakthroughAction) => void }) {
   const chapter = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
   const unlocked = game.xp >= chapter.requirement
   const cleared = game.clearedStoryChapters.includes(chapter.index)
+  const guide = getBreakthroughGuide(game, chapter.requirement)
   const [selectedChoice, setSelectedChoice] = useState(chapter.choices[0].id)
   const choice = chapter.choices.find((item) => item.id === selectedChoice) || chapter.choices[0]
   return (
@@ -1820,18 +1895,19 @@ function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: ()
         <div className="story-body">
           <span className="story-code">{chapter.code}</span><h2>{chapter.title}</h2><p>{chapter.narrative}</p>
           <div className="boss-card"><span><Swords size={17} /></span><div><small>此劫心魔</small><b>{chapter.enemy}</b></div><em>业力 {Math.max(8, game.karma)}</em></div>
-          <div className="story-flow-cues" aria-label="过劫步骤">
+          <div className="story-flow-cues" aria-label={unlocked ? '过劫步骤' : '破境准备步骤'}>
             <span className="active"><b><Swords size={14} /></b><small>看见心魔</small></span><i />
-            <span><b><Compass size={14} /></b><small>选择破法</small></span><i />
-            <span><b><Sparkles size={14} /></b><small>神通归身</small></span>
+            <span><b><Compass size={14} /></b><small>{unlocked ? '选择破法' : '积累修为'}</small></span><i />
+            <span><b><Sparkles size={14} /></b><small>{unlocked ? '神通归身' : '开启劫门'}</small></span>
           </div>
-          <div className="story-choices">
+          {!unlocked && !cleared && <BreakthroughGuidePanel guide={guide} onRoute={onRoute} />}
+          {(unlocked || cleared) && <div className="story-choices">
             <span>选一条你愿意带回现实的破法</span>
             {chapter.choices.map((item, index) => <button key={item.id} className={selectedChoice === item.id ? 'active' : ''} onClick={() => setSelectedChoice(item.id)}><i><img src={index === 0 ? PRACTICE_VISUALS.act.icon : PRACTICE_VISUALS.observe.icon} alt="" />{selectedChoice === item.id && <em><Check size={12} /></em>}</i><span><b>{item.label}</b><small>{item.note}</small></span></button>)}
-          </div>
-          <div className="choice-consequence"><Sparkles size={14} /><span>此路将影响</span><b>愿力 +{choice.effect.will} · 业力 {choice.effect.karma} · 能力 +{choice.effect.ability}</b></div>
+          </div>}
+          {(unlocked || cleared) && <div className="choice-consequence"><Sparkles size={14} /><span>此路将影响</span><b>愿力 +{choice.effect.will} · 业力 {choice.effect.karma} · 能力 +{choice.effect.ability}</b></div>}
           <div className="story-reward"><Trophy size={16} /><span>过关奖励</span><b>{chapter.reward}</b></div>
-          <button className="game-button primary" onClick={() => onAdvance(selectedChoice)} disabled={!unlocked || cleared}>{cleared ? <Check size={17} /> : unlocked ? <Zap size={17} /> : <LockKeyhole size={17} />}{cleared ? '此劫已写入命书' : unlocked ? `${choice.label} · 消耗 2 命火` : `还需 ${chapter.requirement - game.xp} 修为`}</button>
+          <button className="game-button primary" onClick={() => unlocked ? onAdvance(selectedChoice) : onRoute(guide.primaryAction)} disabled={cleared}>{cleared ? <Check size={17} /> : unlocked ? <Zap size={17} /> : <Compass size={17} />}{cleared ? '此劫已写入命书' : unlocked ? `${choice.label} · 消耗 2 命火` : `先走：${guide.primaryLabel}`}</button>
           <blockquote>超我：“{game.playerName}，我可以替你先走进黑暗，但最后握住我的人，只能是你。”</blockquote>
         </div>
       </div>
@@ -1870,7 +1946,7 @@ function TribulationRewardModal({ chapterIndex, choiceLabel, onClose }: { chapte
 
 type ShareMode = 'realm' | 'rescue' | 'challenge'
 
-function ShareModal({ game, realmLabel, onClose, setToast }: { game: GameState; realmLabel: string; onClose: () => void; setToast: (value: string) => void }) {
+function ShareModal({ game, realmLabel, onClose, setToast, onShared }: { game: GameState; realmLabel: string; onClose: () => void; setToast: (value: string) => void; onShared: () => void }) {
   const [mode, setMode] = useState<ShareMode>('rescue')
   const chapter = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
   const lastChoice = game.storyChoices[0]
@@ -1882,6 +1958,7 @@ function ShareModal({ game, realmLabel, onClose, setToast }: { game: GameState; 
     challenge: { label: '共渡此劫', eyebrow: `十八劫主线 · ${chapter.code}`, title: `与我共渡「${chapter.enemy}」`, quote: '不用变得很厉害。来点一盏命火，我们各自把今天走下去。' },
   }
   const card = shareModes[mode]
+  const shareClaimed = game.shareRewardDate === getLocalDateKey()
   const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${game.referralCode}`
   const shareText = `${card.title}\n${card.quote}\n\n我在《超我》让未来的自己替我修行，再回来做我的教练。\n邀请码：${game.referralCode}\n${inviteUrl}`
 
@@ -1909,7 +1986,7 @@ function ShareModal({ game, realmLabel, onClose, setToast }: { game: GameState; 
 
   const copyShare = async () => {
     if (await writeShareText()) {
-      setToast('专属文案已复制')
+      onShared()
     } else {
       setToast('自动复制被浏览器拦住了，请使用“一键分享”或下载海报')
     }
@@ -1922,7 +1999,7 @@ function ShareModal({ game, realmLabel, onClose, setToast }: { game: GameState; 
     }
     try {
       await navigator.share({ title: card.title, text: shareText, url: inviteUrl })
-      setToast('分享面板已打开')
+      onShared()
     } catch {
       // Closing the native share sheet is not an error that needs interrupting the player.
     }
@@ -1992,7 +2069,8 @@ function ShareModal({ game, realmLabel, onClose, setToast }: { game: GameState; 
         <div className="share-actions">
           <div><span>同行邀请</span><h2>你的故事，选一种方式说</h2><p>不晒打卡，晒一次真实选择。邀请归因上线后，系统才会验证并发放命火。</p></div>
           <div className="share-mode-tabs">{(Object.keys(shareModes) as ShareMode[]).map((item) => <button key={item} className={mode === item ? 'active' : ''} onClick={() => setMode(item)}>{shareModes[item].label}</button>)}</div>
-          <div className="invite-card"><span>你的邀请令</span><b>{game.referralCode}</b><small>分享可用 · 奖励验证尚未开放</small></div>
+          <div className="share-practice-reward"><Sparkles size={18} /><span><b>{shareClaimed ? '今日同行共修已完成' : '今日分享修行 · +10 修为'}</b><small>{shareClaimed ? '明日可再次完成；真实好友归因另行验证。' : '成功分享或复制邀请文案即可结算，每日一次。'}</small></span><em>{shareClaimed ? <Check size={17} /> : '+10'}</em></div>
+          <div className="invite-card"><span>你的邀请令</span><b>{game.referralCode}</b><small>分享可用 · 好友邀请奖励待服务端验证</small></div>
           <div className="invite-milestones disabled">{[1, 3, 7].map((value) => <span key={value}><b>{value}</b><small>{value} 位同行</small><em>待服务端验证</em></span>)}</div>
           <button onClick={nativeShare}><Share2 size={17} />一键分享</button>
           <button onClick={copyShare}><Copy size={17} />复制专属文案</button>
