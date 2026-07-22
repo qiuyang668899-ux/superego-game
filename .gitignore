@@ -3,6 +3,7 @@ node_modules-incomplete/
 dist/
 .playwright-cli/
 output/playwright/
+.release/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
