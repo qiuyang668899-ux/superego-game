@@ -100,18 +100,31 @@ systemctl restart superego.service
 nginx -t
 systemctl reload nginx
 
+wait_for_local_health() {
+  local attempt response
+  for attempt in $(seq 1 20); do
+    if response="$(curl --fail --silent http://127.0.0.1:4175/api/health 2>/dev/null)" \
+      && grep -q '"ok":true' <<<"${response}"; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "Local health check did not become ready within 10 seconds." >&2
+  return 1
+}
+
 if [ "${SIMULATE_FAILURE}" = 1 ]; then
   echo "SIMULATED_POST_DEPLOY_FAILURE" >&2
   false
 fi
 
-curl --fail --silent --show-error http://127.0.0.1:4175/api/health | grep -q '"ok":true'
-curl --fail --silent --show-error --resolve mortals.online:443:127.0.0.1 \
+wait_for_local_health
+curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 1 --connect-timeout 5 --max-time 45 --resolve mortals.online:443:127.0.0.1 \
   https://mortals.online/api/coach \
   -H 'Origin: https://mortals.online' \
   -H 'Content-Type: application/json' \
   --data '{"message":"只回复：发布验收通过","history":[],"context":{}}' | grep -q '"reply"'
-curl --fail --silent --show-error --resolve mortals.online:443:127.0.0.1 \
+curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 1 --connect-timeout 5 --max-time 45 --resolve mortals.online:443:127.0.0.1 \
   https://mortals.online/api/health | grep -q '"ok":true'
 
 trap - ERR
