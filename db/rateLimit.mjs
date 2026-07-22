@@ -5,9 +5,9 @@ function hex(bytes) {
 }
 
 export async function anonymousIdentity(request, salt = 'superego-rate-limit-v1') {
-  const ip = request.headers.get('CF-Connecting-IP')
-    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
-    || 'unknown'
+  // This legacy Worker helper is non-production. If re-enabled behind
+  // Cloudflare, only Cloudflare's overwritten address header is trusted.
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
   const data = new TextEncoder().encode(`${salt}|${ip}`)
   return hex(await crypto.subtle.digest('SHA-256', data))
 }

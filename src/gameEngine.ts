@@ -1,7 +1,7 @@
 import { DAILY_QUESTS, REALMS, SEED_ARTS, STORY_CHAPTERS } from './gameData'
+import { SaveStore } from './saveSystem.mjs'
+import { sanitizeGameState } from './gameStateSchema.mjs'
 import type { AgentIdentity, AgentInitiative, CultivationArt, GameState, KnowledgeType, Projection, TabId } from './types'
-
-const STORAGE_KEY = 'superego-game-v1'
 
 export function todayKey() {
   return new Date().toLocaleDateString('en-CA')
@@ -85,24 +85,27 @@ export const DEFAULT_STATE: GameState = {
 }
 
 function normalizeState(value: Partial<GameState>): GameState {
+  const sanitized = sanitizeGameState(value, DEFAULT_STATE)
+  if (!sanitized) return structuredClone(DEFAULT_STATE)
   const merged = {
     ...DEFAULT_STATE,
-    ...value,
-    agent: { ...DEFAULT_STATE.agent, ...value.agent },
-    initiatives: Array.isArray(value.initiatives) ? value.initiatives : DEFAULT_STATE.initiatives,
-    agentJournal: Array.isArray(value.agentJournal) ? value.agentJournal : DEFAULT_STATE.agentJournal,
-    clearedStoryChapters: Array.isArray(value.clearedStoryChapters)
-      ? value.clearedStoryChapters
-      : Array.from({ length: Math.max(0, value.storyIndex || 0) }, (_, index) => index),
-    storyChoices: Array.isArray(value.storyChoices) ? value.storyChoices : [],
-    claimedInviteMilestones: Array.isArray(value.claimedInviteMilestones) ? value.claimedInviteMilestones : [],
-    canonBookmarks: Array.isArray(value.canonBookmarks) ? value.canonBookmarks : DEFAULT_STATE.canonBookmarks,
-    canonHistory: Array.isArray(value.canonHistory) ? value.canonHistory : DEFAULT_STATE.canonHistory,
-    canonProgress: value.canonProgress && typeof value.canonProgress === 'object' ? value.canonProgress : DEFAULT_STATE.canonProgress,
-    aiConsent: Boolean(value.aiConsent),
-    aiConsentAt: typeof value.aiConsentAt === 'number' ? value.aiConsentAt : 0,
-    messages: Array.isArray(value.messages) ? value.messages.slice(-80) : DEFAULT_STATE.messages,
-    coachMemories: Array.isArray(value.coachMemories) ? value.coachMemories.slice(-40) : [],
+    ...sanitized,
+    agent: { ...DEFAULT_STATE.agent, ...sanitized.agent },
+    quests: sanitized.quests.length ? sanitized.quests : DEFAULT_STATE.quests,
+    arts: sanitized.arts.length ? sanitized.arts : DEFAULT_STATE.arts,
+    projections: sanitized.projections.length ? sanitized.projections : DEFAULT_STATE.projections,
+    initiatives: sanitized.initiatives.length ? sanitized.initiatives : DEFAULT_STATE.initiatives,
+    agentJournal: sanitized.agentJournal.length ? sanitized.agentJournal : DEFAULT_STATE.agentJournal,
+    clearedStoryChapters: sanitized.clearedStoryChapters.length
+      ? sanitized.clearedStoryChapters
+      : Array.from({ length: Math.max(0, sanitized.storyIndex || 0) }, (_, index) => index),
+    storyChoices: sanitized.storyChoices,
+    claimedInviteMilestones: sanitized.claimedInviteMilestones,
+    canonBookmarks: sanitized.canonBookmarks,
+    canonHistory: sanitized.canonHistory,
+    canonProgress: sanitized.canonProgress,
+    messages: sanitized.messages.length ? sanitized.messages : DEFAULT_STATE.messages,
+    coachMemories: sanitized.coachMemories,
   }
   // Earlier releases ended after seven chapters and kept storyIndex on the
   // final cleared chapter. When the campaign expands, move that save to the
@@ -117,7 +120,7 @@ function normalizeState(value: Partial<GameState>): GameState {
     merged.energy = Math.min(merged.maxEnergy, merged.energy + recovered)
     merged.lastEnergyAt += recovered * 3 * 60 * 60 * 1000
   }
-  if (value.lastPracticeDate && value.lastPracticeDate !== todayKey()) {
+  if (sanitized.lastPracticeDate && sanitized.lastPracticeDate !== todayKey()) {
     merged.quests = DAILY_QUESTS.map((quest) => ({ id: quest.id, completed: false }))
     merged.lastPracticeDate = todayKey()
   }
@@ -301,21 +304,69 @@ export function acceptAgentInitiative(state: GameState, initiativeId: string): G
   }, 'chat', `你接受了我的主动提议“${initiative.title}”。我会根据真实结果修正下一次判断。`)
 }
 
-export function loadGame(): GameState {
+function browserStorage(): Storage | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? normalizeState(JSON.parse(raw) as Partial<GameState>) : DEFAULT_STATE
+    return typeof globalThis.localStorage === 'undefined' ? null : globalThis.localStorage
   } catch {
-    return DEFAULT_STATE
+    return null
   }
 }
 
+let saveStore: SaveStore<GameState> | null = null
+function getSaveStore() {
+  if (!saveStore) {
+    saveStore = new SaveStore<GameState>(browserStorage(), {
+      normalize: (value) => normalizeState(value),
+      validate: (value) => sanitizeGameState(value, DEFAULT_STATE),
+    })
+  }
+  return saveStore
+}
+
+export interface SaveReport {
+  status: 'ok' | 'new' | 'migrated' | 'recovered' | 'corrupt' | 'unavailable'
+  blockAutosave: boolean
+  reason: string
+  message: string
+}
+
+export function loadGameWithReport(): { state: GameState; report: SaveReport } {
+  const loaded = getSaveStore().load(DEFAULT_STATE)
+  const message = loaded.status === 'recovered'
+    ? '主存档异常，已恢复最近可用存档。请立即导出一份备份。'
+    : loaded.status === 'migrated'
+      ? '已将旧版本存档安全迁移。建议现在导出一份本地备份。'
+      : loaded.status === 'corrupt'
+        ? '存档校验失败。当前显示的是临时新档，旧数据未被覆盖，请先导出或导入存档。'
+        : loaded.status === 'unavailable'
+          ? '浏览器暂时不允许本地存档写入。请关闭隐私拦截或使用导出文件保存进度。'
+          : ''
+  const { state, ...report } = loaded
+  return { state, report: { ...report, message } }
+}
+
+export function loadGame(): GameState {
+  return loadGameWithReport().state
+}
+
 export function saveGame(state: GameState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  return getSaveStore().save(state)
+}
+
+export function restoreGameBackup() {
+  return getSaveStore().restoreBackup(DEFAULT_STATE)
+}
+
+export function importGameSave(text: string) {
+  return getSaveStore().importText(text)
+}
+
+export function exportGameSave(state: GameState) {
+  return getSaveStore().exportText(state)
 }
 
 export function resetGame() {
-  localStorage.removeItem(STORAGE_KEY)
+  return getSaveStore().clear()
 }
 
 export function getRealm(xp: number) {

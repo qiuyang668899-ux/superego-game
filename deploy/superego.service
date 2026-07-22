@@ -9,6 +9,9 @@ User=www-data
 Group=www-data
 WorkingDirectory=/srv/maiyi-tools/superego/current
 EnvironmentFile=/srv/maiyi-tools/superego/shared/.env
+Environment=NODE_ENV=production
+Environment=SUPEREGO_ENV=production
+UMask=0077
 ExecStart=/usr/bin/node /srv/maiyi-tools/superego/current/server.mjs
 Restart=always
 RestartSec=5

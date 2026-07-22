@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   Bookmark,
@@ -41,6 +41,7 @@ import {
   Swords,
   Target,
   Trophy,
+  Upload,
   Users,
   Volume2,
   VolumeX,
@@ -73,8 +74,11 @@ import {
   getPersonalDestinyLine,
   getRealm,
   growAgent,
-  loadGame,
+  exportGameSave,
+  importGameSave,
+  loadGameWithReport,
   resetGame,
+  restoreGameBackup,
   runAutonomousCycle,
   saveGame,
 } from './gameEngine'
@@ -221,7 +225,10 @@ function canonReaderChapters(entry: CanonEntry) {
 }
 
 function App() {
-  const [game, setGame] = useState<GameState>(() => ({ ...loadGame(), activeTab: 'cave' }))
+  const initialLoad = useMemo(() => loadGameWithReport(), [])
+  const [game, setGame] = useState<GameState>(() => ({ ...initialLoad.state, activeTab: 'cave' }))
+  const [saveMessage, setSaveMessage] = useState(initialLoad.report.message)
+  const [autosaveEnabled, setAutosaveEnabled] = useState(!initialLoad.report.blockAutosave)
   const [toast, setToast] = useState('')
   const [showStory, setShowStory] = useState(false)
   const [showShare, setShowShare] = useState(false)
@@ -233,7 +240,16 @@ function App() {
   const [breakthrough, setBreakthrough] = useState('')
   const previousRealm = useRef(getRealm(game.xp).index)
 
-  useEffect(() => saveGame(game), [game])
+  useEffect(() => {
+    if (!autosaveEnabled) return
+    const result = saveGame(game)
+    if (!result.ok) {
+      const message = result.reason === 'quota'
+        ? '本地空间不足，当前进度尚未写入。请立即导出存档或清理浏览器空间。'
+        : '本地存档暂时写入失败。请立即导出存档，避免关闭页面后丢失进度。'
+      setSaveMessage((current) => current === message ? current : message)
+    }
+  }, [game, autosaveEnabled])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -440,42 +456,6 @@ function App() {
     setToast('神通显化 · 能力归身 +10，命火 +1')
   }
 
-  const purchaseEnergy = (packageId: string, amount: number, name: string) => {
-    patchGame((current) => ({
-      ...current,
-      energy: current.energy + amount,
-      purchaseHistory: [`${packageId}-${Date.now()}`, ...current.purchaseHistory].slice(0, 30),
-    }))
-    setShowShop(false)
-    playTone(game.soundOn, 'reward')
-    setToast(`${name}已到账 · 命火 +${amount}（预览版未真实扣款）`)
-  }
-
-  const claimShareReward = () => {
-    const today = new Date().toLocaleDateString('en-CA')
-    if (game.shareRewardDate === today) {
-      setToast('今天的分享命火已经领过了，明天再来')
-      return
-    }
-    patchGame((current) => ({ ...current, energy: current.energy + 1, shareRewardDate: today }))
-    setToast('邀请链接已复制 · 今日分享命火 +1')
-  }
-
-  const simulateInvite = () => {
-    const nextCount = game.inviteCount + 1
-    const milestoneReward: Record<number, number> = { 1: 2, 3: 6, 7: 15 }
-    const milestone = [1, 3, 7].find((value) => nextCount >= value && !game.claimedInviteMilestones.includes(value))
-    const bonus = milestone ? milestoneReward[milestone] : 0
-    patchGame((current) => ({
-      ...current,
-      energy: current.energy + 3 + bonus,
-      inviteCount: nextCount,
-      claimedInviteMilestones: milestone ? [...current.claimedInviteMilestones, milestone] : current.claimedInviteMilestones,
-    }))
-    playTone(game.soundOn, 'reward')
-    setToast(milestone ? `同行里程碑 ${milestone} 人达成 · 命火 +${3 + bonus}` : '好友完成序章 · 你们各得命火 +3')
-  }
-
   const acceptInitiative = (initiativeId: string) => {
     patchGame((current) => acceptAgentInitiative(current, initiativeId))
     setShowSoul(false)
@@ -489,10 +469,60 @@ function App() {
   }
 
   const restart = () => {
-    resetGame()
+    const result = resetGame()
+    if (!result.ok) {
+      setSaveMessage('旧存档未能清除，请先导出后再重开轮回。')
+      return
+    }
     setGame({ ...DEFAULT_STATE, arts: [...DEFAULT_STATE.arts], quests: [...DEFAULT_STATE.quests] })
+    setAutosaveEnabled(true)
+    setSaveMessage('')
     setShowMenu(false)
     setToast('轮回已重置')
+  }
+
+  const downloadSave = () => {
+    const link = document.createElement('a')
+    link.download = `超我存档-${new Date().toISOString().slice(0, 10)}.json`
+    link.href = URL.createObjectURL(new Blob([exportGameSave(game)], { type: 'application/json' }))
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+    setToast('存档备份已导出')
+  }
+
+  const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const result = importGameSave(await file.text())
+    if (!result.ok || !result.state) {
+      setSaveMessage('导入失败：文件不是有效的《超我》存档。当前进度未被覆盖。')
+      return
+    }
+    setGame({ ...result.state, activeTab: 'cave' })
+    setAutosaveEnabled(true)
+    setSaveMessage('存档已导入并通过校验。')
+    setShowMenu(false)
+    setToast('存档恢复成功')
+  }
+
+  const restoreBackupSave = () => {
+    const result = restoreGameBackup()
+    if (!result.ok) {
+      setSaveMessage('没有可用的最近存档恢复点。')
+      return
+    }
+    setGame({ ...result.state, activeTab: 'cave' })
+    setAutosaveEnabled(true)
+    setSaveMessage('已恢复最近可用存档，并重新建立主存档。')
+    setToast('最近存档已恢复')
+  }
+
+  const beginNewSave = () => {
+    setAutosaveEnabled(true)
+    setSaveMessage('')
+    const result = saveGame(game)
+    if (!result.ok) setSaveMessage('新存档仍无法写入，请先导出存档后再继续。')
   }
 
   return (
@@ -506,6 +536,7 @@ function App() {
         onMenu={() => setShowMenu(true)}
         onShop={() => setShowShop(true)}
       />
+      {saveMessage && <SaveNotice message={saveMessage} blocked={!autosaveEnabled} onExport={downloadSave} onImport={handleImport} onRestore={restoreBackupSave} onStartNew={beginNewSave} onDismiss={() => setSaveMessage('')} />}
 
       <main className="game-main">
         {game.activeTab === 'cave' && (
@@ -533,10 +564,10 @@ function App() {
       }} />}
       {showStory && <StoryModal game={game} onClose={() => setShowStory(false)} onAdvance={advanceStory} />}
       {practiceTask && <PracticeTaskModal key={practiceTask} type={practiceTask} game={game} onClose={() => setPracticeTask(null)} onComplete={completePracticeTask} />}
-      {showShare && <ShareModal game={game} realmLabel={`${realmState.realm.name} ${realmState.layer} 层`} onClose={() => setShowShare(false)} setToast={setToast} onShareReward={claimShareReward} onInviteAccepted={simulateInvite} />}
-      {showShop && <ShopModal game={game} onClose={() => setShowShop(false)} onPurchase={purchaseEnergy} onShare={() => { setShowShop(false); setShowShare(true) }} />}
+      {showShare && <ShareModal game={game} realmLabel={`${realmState.realm.name} ${realmState.layer} 层`} onClose={() => setShowShare(false)} setToast={setToast} />}
+      {showShop && <ShopModal game={game} onClose={() => setShowShop(false)} onShare={() => { setShowShop(false); setShowShare(true) }} />}
       {showSoul && <SoulModal game={game} onClose={() => setShowSoul(false)} onAccept={acceptInitiative} onRefresh={refreshInitiative} />}
-      {showMenu && <GameMenu game={game} onClose={() => setShowMenu(false)} onRestart={restart} onReplay={() => { setShowMenu(false); setShowPrologue(true) }} />}
+      {showMenu && <GameMenu game={game} onClose={() => setShowMenu(false)} onRestart={restart} onReplay={() => { setShowMenu(false); setShowPrologue(true) }} onExport={downloadSave} onImport={handleImport} onRestore={restoreBackupSave} />}
       {toast && <div className="toast"><Sparkles size={16} />{toast}</div>}
       {breakthrough && <Breakthrough realm={breakthrough} />}
     </div>
@@ -1775,7 +1806,7 @@ function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: ()
 
 type ShareMode = 'realm' | 'rescue' | 'challenge'
 
-function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInviteAccepted }: { game: GameState; realmLabel: string; onClose: () => void; setToast: (value: string) => void; onShareReward: () => void; onInviteAccepted: () => void }) {
+function ShareModal({ game, realmLabel, onClose, setToast }: { game: GameState; realmLabel: string; onClose: () => void; setToast: (value: string) => void }) {
   const [mode, setMode] = useState<ShareMode>('rescue')
   const chapter = STORY_CHAPTERS[Math.min(game.storyIndex, STORY_CHAPTERS.length - 1)]
   const lastChoice = game.storyChoices[0]
@@ -1788,7 +1819,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
   }
   const card = shareModes[mode]
   const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${game.referralCode}`
-  const shareText = `${card.title}\n${card.quote}\n\n我在《超我》让未来的自己替我修行，再回来做我的教练。\n邀请码：${game.referralCode}\n${inviteUrl}\n好友完成序章后，我们各得 3 点命火。`
+  const shareText = `${card.title}\n${card.quote}\n\n我在《超我》让未来的自己替我修行，再回来做我的教练。\n邀请码：${game.referralCode}\n${inviteUrl}`
 
   const writeShareText = async () => {
     if (navigator.clipboard?.writeText) {
@@ -1814,7 +1845,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
 
   const copyShare = async () => {
     if (await writeShareText()) {
-      onShareReward()
+      setToast('专属文案已复制')
     } else {
       setToast('自动复制被浏览器拦住了，请使用“一键分享”或下载海报')
     }
@@ -1827,7 +1858,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
     }
     try {
       await navigator.share({ title: card.title, text: shareText, url: inviteUrl })
-      onShareReward()
+      setToast('分享面板已打开')
     } catch {
       // Closing the native share sheet is not an error that needs interrupting the player.
     }
@@ -1878,7 +1909,7 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
     context.fillText(`愿力 ${game.will}   十八劫 ${game.clearedStoryChapters.length}/18   功德 ${game.merit}`, 74, 1277)
     context.fillStyle = 'rgba(255,255,255,.5)'
     context.font = '27px -apple-system, PingFang SC, sans-serif'
-    context.fillText(`邀请码 ${game.referralCode} · 好友过序章双方得命火`, 74, 1350)
+    context.fillText(`邀请码 ${game.referralCode} · 邀请归因与奖励即将开放`, 74, 1350)
     const link = document.createElement('a')
     link.download = `超我-${card.label}-${Date.now()}.png`
     link.href = canvas.toDataURL('image/png')
@@ -1895,21 +1926,20 @@ function ShareModal({ game, realmLabel, onClose, setToast, onShareReward, onInvi
           <div className="share-overlay"><span>SUPEREGO · AI 修行养成</span><div><small>{card.eyebrow}</small><h2>{card.title}</h2><p>{card.quote}</p><em>愿力 {game.will} · 十八劫 {game.clearedStoryChapters.length}/18 · 功德 {game.merit}</em></div></div>
         </div>
         <div className="share-actions">
-          <div><span>同行邀请</span><h2>你的故事，选一种方式说</h2><p>不晒打卡，晒一次真实选择。好友完成序章后，你们各得 3 点命火。</p></div>
+          <div><span>同行邀请</span><h2>你的故事，选一种方式说</h2><p>不晒打卡，晒一次真实选择。邀请归因上线后，系统才会验证并发放命火。</p></div>
           <div className="share-mode-tabs">{(Object.keys(shareModes) as ShareMode[]).map((item) => <button key={item} className={mode === item ? 'active' : ''} onClick={() => setMode(item)}>{shareModes[item].label}</button>)}</div>
-          <div className="invite-card"><span>你的邀请令</span><b>{game.referralCode}</b><small>已有 {game.inviteCount} 位朋友与你同行</small></div>
-          <div className="invite-milestones">{[1, 3, 7].map((value) => <span key={value} className={game.inviteCount >= value ? 'done' : ''}><b>{game.inviteCount >= value ? <Check size={12} /> : value}</b><small>{value} 位同行</small><em>额外 +{value === 1 ? 2 : value === 3 ? 6 : 15}</em></span>)}</div>
-          <button onClick={nativeShare}><Share2 size={17} />一键分享 · 今日首次 +1</button>
+          <div className="invite-card"><span>你的邀请令</span><b>{game.referralCode}</b><small>分享可用 · 奖励验证尚未开放</small></div>
+          <div className="invite-milestones disabled">{[1, 3, 7].map((value) => <span key={value}><b>{value}</b><small>{value} 位同行</small><em>待服务端验证</em></span>)}</div>
+          <button onClick={nativeShare}><Share2 size={17} />一键分享</button>
           <button onClick={copyShare}><Copy size={17} />复制专属文案</button>
           <button onClick={downloadCard}><Download size={17} />下载战报海报</button>
-          <button className="preview-invite" onClick={onInviteAccepted}><Users size={17} />模拟好友完成序章（预览）</button>
         </div>
       </div>
     </div>
   )
 }
 
-function ShopModal({ game, onClose, onPurchase, onShare }: { game: GameState; onClose: () => void; onPurchase: (id: string, amount: number, name: string) => void; onShare: () => void }) {
+function ShopModal({ game, onClose, onShare }: { game: GameState; onClose: () => void; onShare: () => void }) {
   const remaining = Math.max(0, 3 * 60 * 60 * 1000 - (Date.now() - game.lastEnergyAt))
   const remainingHours = Math.max(1, Math.ceil(remaining / 3600000))
   return (
@@ -1923,14 +1953,14 @@ function ShopModal({ game, onClose, onPurchase, onShare }: { game: GameState; on
         </header>
 
         <section className="free-energy">
-          <button onClick={onShare}><Users size={20} /><span><b>邀请一位朋友</b><small>好友过序章，双方 +3</small></span><em>免费</em></button>
+          <button onClick={onShare}><Users size={20} /><span><b>邀请一位朋友</b><small>奖励待服务端归因验证后开放</small></span><em>分享</em></button>
           <div><Gift size={20} /><span><b>完成现实行动</b><small>每完成一个投射 +1</small></span><em>去镜门</em></div>
           <div><Flame size={20} /><span><b>等命火自然恢复</b><small>每 3 小时恢复 1 点</small></span><em>约 {remainingHours} 小时</em></div>
         </section>
 
         <section className="free-forever"><ShieldCheck size={18} /><div><b>不卖经文，不卖答案，不拿焦虑卡进度</b><p>全部原典与现代译文、镜门问道、每日基础修行永久免费。付费只购买更快推进支线与主线的命火，以及外观和陪伴型权益。</p></div></section>
 
-        <div className="shop-section-title"><span>快速补给</span><small>预览版不会真实扣款</small></div>
+        <div className="shop-section-title"><span>快速补给</span><small>支付与发货尚未开放</small></div>
         <section className="shop-packages">
           {SHOP_PACKAGES.map((item) => (
             <article key={item.id} className={item.id === 'cycle' ? 'featured' : ''}>
@@ -1938,11 +1968,11 @@ function ShopModal({ game, onClose, onPurchase, onShare }: { game: GameState; on
               <div className="package-flames"><Flame size={25} /><b>+{item.energy}</b></div>
               <h3>{item.name}</h3><p>{item.note}</p>
               {item.id === 'monthly' && <ul><li>每日同行命火</li><li>专属命书皮肤</li><li>周度超我复盘</li></ul>}
-              <button onClick={() => onPurchase(item.id, item.energy, item.name)}>¥{item.price} · 体验购买</button>
+              <button disabled aria-disabled="true">¥{item.price} · 尚未开放</button>
             </article>
           ))}
         </section>
-        <p className="shop-note"><ShieldCheck size={13} />本地演示不会发起支付。正式上线需接入微信支付或 Apple IAP，并由服务端核验发货。</p>
+        <p className="shop-note"><ShieldCheck size={13} />当前不会发起支付，也不会本地发货；接入服务端验签前，所有付费入口保持关闭。</p>
       </div>
     </div>
   )
@@ -2014,7 +2044,21 @@ function SoulModal({ game, onClose, onAccept, onRefresh }: { game: GameState; on
   )
 }
 
-function GameMenu({ game, onClose, onRestart, onReplay }: { game: GameState; onClose: () => void; onRestart: () => void; onReplay: () => void }) {
+function SaveNotice({ message, blocked, onExport, onImport, onRestore, onStartNew, onDismiss }: { message: string; blocked: boolean; onExport: () => void; onImport: (event: ChangeEvent<HTMLInputElement>) => void; onRestore: () => void; onStartNew: () => void; onDismiss: () => void }) {
+  return <aside className="save-notice" role="alert">
+    <ShieldCheck size={17} />
+    <div><b>存档保护提醒</b><p>{message}</p></div>
+    <div className="save-notice-actions">
+      <button onClick={onExport}>导出</button>
+      <label>导入<input type="file" accept="application/json,.json" onChange={onImport} /></label>
+      <button onClick={onRestore}>恢复点</button>
+      {blocked && <button className="quiet" onClick={onStartNew}>确认建立新档</button>}
+      <button className="quiet" onClick={onDismiss}>收起提醒</button>
+    </div>
+  </aside>
+}
+
+function GameMenu({ game, onClose, onRestart, onReplay, onExport, onImport, onRestore }: { game: GameState; onClose: () => void; onRestart: () => void; onReplay: () => void; onExport: () => void; onImport: (event: ChangeEvent<HTMLInputElement>) => void; onRestore: () => void }) {
   return (
     <div className="modal-layer menu-layer" role="dialog" aria-modal="true" aria-label="游戏菜单">
       <div className="game-menu modal-card">
@@ -2023,6 +2067,10 @@ function GameMenu({ game, onClose, onRestart, onReplay }: { game: GameState; onC
         <div className="profile-strip"><span>{game.playerName[0]}</span><div><b>{game.playerName}</b><small>本命愿 · {game.primeVow}</small></div><em>{getRealm(game.xp).realm.name}境</em></div>
         <div className="menu-stats"><span><b>{game.xp}</b>总修为</span><span><b>{game.agent.autonomy}</b>人格自主</span><span><b>{game.merit}</b>功德</span></div>
         <button className="menu-item" onClick={onReplay}><Play size={17} />重临序章<span>再看一次镜门立誓</span></button>
+        <section className="save-tools">
+          <div><b>本地存档</b><small>双槽保护 · 可跨设备备份，不会上传云端</small></div>
+          <div className="save-tool-buttons"><button onClick={onExport}><Download size={15} />导出存档</button><label><Upload size={15} />导入存档<input type="file" accept="application/json,.json" onChange={onImport} /></label><button onClick={onRestore}><RotateCcw size={15} />恢复点</button></div>
+        </section>
         <button className="menu-item"><CircleEllipsis size={17} />版本纪事<span>第 15 轮 · 一步一修版</span></button>
         <div className="iteration-chronicle">
           <span><b>第 13 轮</b><em>一眼就懂</em><small>首屏只留当前任务、一个主按钮与三步进度</small></span>

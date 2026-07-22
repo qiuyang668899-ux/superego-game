@@ -1479,6 +1479,29 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .energy-button, .icon-button, .game-button, .art-card, .canon-book-list article { transition-duration: .08s; }
 }
 
+.save-notice { position: fixed; z-index: 75; top: 73px; left: 50%; width: min(720px, calc(100vw - 28px)); transform: translateX(-50%); padding: 12px 14px; border: 1px solid rgba(196,154,85,.48); background: rgba(15,14,11,.96); box-shadow: 0 18px 55px rgba(0,0,0,.46); display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; align-items: center; color: var(--bone); }
+.save-notice > svg { color: var(--gold); }
+.save-notice b { font-size: 11px; color: var(--gold-bright); }
+.save-notice p { margin: 3px 0 0; font-size: 9px; line-height: 1.55; color: var(--bone-muted); }
+.save-notice-actions, .save-tool-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.save-notice-actions button, .save-notice-actions label, .save-tool-buttons button, .save-tool-buttons label { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); background: rgba(196,154,85,.07); color: var(--gold-bright); display: inline-flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; font-size: 9px; }
+.save-notice-actions .quiet { color: var(--bone-muted); background: transparent; }
+.save-notice input, .save-tools input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.save-tools { margin: 11px 0; padding: 14px; border: 1px solid var(--line-soft); background: rgba(196,154,85,.035); }
+.save-tools > div:first-child { margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; }
+.save-tools b { font-size: 10px; color: var(--gold-bright); }
+.save-tools small { color: var(--bone-muted); font-size: 8px; }
+.shop-packages button:disabled { opacity: .48; cursor: not-allowed; filter: grayscale(.35); }
+.invite-milestones.disabled { opacity: .6; }
+
+@media (max-width: 640px) {
+  .save-notice { top: 65px; grid-template-columns: auto minmax(0,1fr); }
+  .save-notice-actions { grid-column: 1/-1; }
+  .save-notice-actions button, .save-notice-actions label { flex: 1; }
+  .save-tools > div:first-child { flex-direction: column; }
+  .save-tool-buttons > * { flex: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
