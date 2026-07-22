@@ -676,6 +676,29 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .story-reward span { color: var(--bone-muted); font-size: 8px; }
 .story-reward b { font-family: var(--serif); font-size: 10px; color: var(--gold-bright); }
 .story-body blockquote { margin: 22px 0 0; color: var(--bone-muted); font-family: var(--serif); font-size: 10px; text-align: center; }
+.tribulation-reward-layer { background: radial-gradient(circle at 50% 32%, rgba(137,88,39,.22), transparent 34%), rgba(2,3,2,.94); }
+.tribulation-reward-modal { width: min(560px, 94vw); padding: 0 38px 31px; overflow: hidden; text-align: center; background: radial-gradient(circle at 50% 28%, rgba(196,154,85,.12), transparent 34%), #0d0e0b; }
+.reward-scene { height: 220px; margin: 0 -38px -38px; position: relative; overflow: hidden; }
+.reward-scene img { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; filter: saturate(.72) contrast(1.1) brightness(.7); }
+.reward-scene i { position: absolute; inset: 0; background: linear-gradient(0deg, #0d0e0b 0, transparent 68%), linear-gradient(90deg, rgba(6,7,6,.35), transparent 30% 70%, rgba(6,7,6,.35)); }
+.reward-scene span { position: absolute; left: 0; right: 0; top: 24px; color: var(--gold); font-family: var(--serif); font-size: 9px; letter-spacing: .2em; }
+.reward-seal { width: 80px; height: 80px; margin: 0 auto 10px; border: 1px solid var(--gold); border-radius: 50%; background: radial-gradient(circle, #2a2114, #0b0c0a 68%); color: var(--gold-bright); box-shadow: 0 0 52px rgba(196,154,85,.28), inset 0 0 22px rgba(196,154,85,.12); display: grid; place-items: center; position: relative; z-index: 2; }
+.reward-seal span { position: absolute; font-family: var(--display); font-size: 32px; }
+.reward-seal svg { opacity: .22; transform: scale(1.8); }
+.tribulation-reward-modal .story-code { margin-top: 5px; }
+.tribulation-reward-modal h2 { margin: 10px 0 8px; color: var(--gold-bright); font-family: var(--display); font-size: 34px; font-weight: 400; }
+.tribulation-reward-modal > p { max-width: 420px; margin: 0 auto; color: var(--bone-dim); font-family: var(--serif); font-size: 11px; line-height: 1.8; }
+.reward-tally { margin: 19px 0 15px; padding: 13px 0; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); display: grid; grid-template-columns: repeat(3,1fr); }
+.reward-tally span + span { border-left: 1px solid var(--line-soft); }
+.reward-tally b, .reward-tally small { display: block; }
+.reward-tally b { color: var(--gold-bright); font-family: var(--serif); font-size: 16px; }
+.reward-tally small { margin-top: 3px; color: var(--bone-muted); font-size: 7px; }
+.reward-route { display: grid; grid-template-columns: auto 1fr auto 1fr auto; gap: 8px; align-items: center; color: var(--jade); }
+.reward-route span { display: inline-flex; align-items: center; gap: 5px; font-size: 8px; white-space: nowrap; }
+.reward-route > i { height: 1px; background: linear-gradient(90deg, rgba(118,148,134,.5), rgba(196,154,85,.5)); }
+.reward-route .active { color: var(--gold-bright); }
+.tribulation-reward-modal blockquote { margin: 18px 0; color: var(--bone-dim); font-family: var(--serif); font-size: 10px; line-height: 1.8; }
+.reward-unlock { margin-top: 12px; color: var(--jade); display: inline-flex; align-items: center; gap: 6px; font-size: 8px; }
 
 .distill-result { width: min(510px, 94vw); padding: 44px 43px 38px; text-align: center; overflow: hidden; }
 .result-rays { position: absolute; width: 360px; height: 360px; left: 50%; top: -190px; transform: translateX(-50%); background: repeating-conic-gradient(from 0deg, rgba(196,154,85,.15) 0 2deg, transparent 2deg 15deg); border-radius: 50%; opacity: .4; animation: slowSpin 18s linear infinite; }
@@ -1025,6 +1048,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .practice-step-strip .active::after { content: '现在'; position: absolute; bottom: -7px; padding: 1px 6px; background: #17150f; color: var(--gold); font-size: 6px; letter-spacing: .12em; }
 .practice-step-strip .done { color: var(--jade); }
 .practice-step-strip .done span { border-color: rgba(118,148,134,.42); background: rgba(118,148,134,.1); }
+.first-journey-card { background: radial-gradient(circle at 82% 12%, rgba(154,61,45,.12), transparent 32%), linear-gradient(150deg, rgba(30,25,18,.98), rgba(9,11,9,.96) 70%); }
+.first-journey-strip { border-color: rgba(196,154,85,.18); }
+.first-journey-current .practice-title-line h1 { color: #f0d49a; }
+.first-tribulation-peek > img { object-position: center 26%; }
+.first-journey-note { min-height: 42px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line-soft); color: var(--jade); display: flex; align-items: center; gap: 8px; font-size: 8px; line-height: 1.55; }
 .practice-kicker { color: var(--cinnabar-bright); font-family: var(--serif); font-size: 10px; letter-spacing: .16em; }
 .practice-title-line { margin: 14px 0 17px; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 16px; align-items: start; }
 .practice-title-line > i { width: 58px; height: 66px; border: 1px solid rgba(167,66,49,.54); color: #cb735b; background: rgba(137,49,38,.09); display: grid; place-items: center; font-family: var(--display); font-size: 31px; font-style: normal; }
@@ -1367,7 +1395,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .story-modal { grid-template-columns: 1fr; }
   .story-visual { min-height: 250px; max-height: 34vh; }
   .story-visual > div { background: linear-gradient(0deg, var(--panel-strong), transparent 60%); }
-  .story-body { padding: 25px 22px 26px; }
+  .story-body { padding: 25px 22px 92px; }
+  .story-body > .game-button.primary { position: fixed; left: 0; right: 0; bottom: 0; z-index: 78; width: 100vw; min-height: 58px; margin: 0; border-left: 0; border-right: 0; border-bottom: 0; box-shadow: 0 -18px 34px rgba(12,13,11,.96), 0 10px 28px rgba(121,83,38,.22); }
+  .tribulation-reward-modal { width: 100vw; min-height: 100svh; max-height: 100svh; padding: 0 20px 24px; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; }
+  .reward-scene { width: calc(100% + 40px); height: 210px; min-height: 210px; margin: -20px -20px -34px; }
+  .reward-seal { width: 72px; height: 72px; flex: 0 0 auto; }
+  .tribulation-reward-modal h2 { font-size: 30px; }
+  .tribulation-reward-modal > p { font-size: 10px; }
+  .reward-tally { width: 100%; margin: 15px 0 12px; }
+  .reward-route { width: 100%; gap: 5px; }
+  .reward-route span { font-size: 7px; }
+  .tribulation-reward-modal blockquote { margin: 14px 0; }
   .share-modal { grid-template-columns: 1fr; max-height: 100vh; overflow-y: auto; }
   .share-preview { min-height: 64vh; }
   .share-actions { padding: 25px 22px; }

@@ -63,6 +63,7 @@ import {
 import { CANON_ENTRIES, CANON_FAMILIES } from './scriptureData'
 import { hasFullCanon, loadCanonIndex, loadCanonSection } from './canonText'
 import { askSuperego, checkSuperegoHealth, needsImmediateSupport } from './coachApi'
+import { getFirstJourneyStage } from './firstJourney.mjs'
 import {
   buildProjection,
   acceptAgentInitiative,
@@ -236,6 +237,7 @@ function App() {
   const [showShop, setShowShop] = useState(false)
   const [showSoul, setShowSoul] = useState(false)
   const [showPrologue, setShowPrologue] = useState(false)
+  const [tribulationReward, setTribulationReward] = useState<{ chapterIndex: number; choiceLabel: string } | null>(null)
   const [practiceTask, setPracticeTask] = useState<DailyPracticeType | null>(null)
   const [breakthrough, setBreakthrough] = useState('')
   const previousRealm = useRef(getRealm(game.xp).index)
@@ -404,19 +406,23 @@ function App() {
       return
     }
     const nextIndex = Math.min(STORY_CHAPTERS.length - 1, game.storyIndex + 1)
-    patchGame((current) => growAgent({
-      ...current,
-      storyIndex: nextIndex,
-      clearedStoryChapters: [...new Set([...current.clearedStoryChapters, chapter.index])],
-      storyChoices: [{ chapterIndex: chapter.index, choiceId: choice.id, label: choice.label, createdAt: Date.now() }, ...current.storyChoices].slice(0, STORY_CHAPTERS.length),
-      xp: current.xp + 36,
-      will: clamp(current.will + choice.effect.will),
-      karma: clamp(current.karma + choice.effect.karma),
-      ability: clamp(current.ability + choice.effect.ability),
-      merit: current.merit + 12,
-      energy: Math.max(0, current.energy - 2),
-    }, 'story', `在“${chapter.title}”，你选择了“${choice.label}”。我会把这种走法带进以后主动做出的决定。`))
+    patchGame((current) => {
+      if (current.clearedStoryChapters.includes(chapter.index)) return current
+      return growAgent({
+        ...current,
+        storyIndex: nextIndex,
+        clearedStoryChapters: [...new Set([...current.clearedStoryChapters, chapter.index])],
+        storyChoices: [{ chapterIndex: chapter.index, choiceId: choice.id, label: choice.label, createdAt: Date.now() }, ...current.storyChoices].slice(0, STORY_CHAPTERS.length),
+        xp: current.xp + 36,
+        will: clamp(current.will + choice.effect.will),
+        karma: clamp(current.karma + choice.effect.karma),
+        ability: clamp(current.ability + choice.effect.ability),
+        merit: current.merit + 12,
+        energy: Math.max(0, current.energy - 2),
+      }, 'story', `在“${chapter.title}”，你选择了“${choice.label}”。我会把这种走法带进以后主动做出的决定。`)
+    })
     setShowStory(false)
+    setTribulationReward({ chapterIndex: chapter.index, choiceLabel: choice.label })
     playTone(game.soundOn, 'breakthrough')
     setToast(`${chapter.reward} · 你的选择已写入命书`)
   }
@@ -563,6 +569,7 @@ function App() {
         finishOnboarding(name, vow)
       }} />}
       {showStory && <StoryModal game={game} onClose={() => setShowStory(false)} onAdvance={advanceStory} />}
+      {tribulationReward && <TribulationRewardModal chapterIndex={tribulationReward.chapterIndex} choiceLabel={tribulationReward.choiceLabel} onClose={() => setTribulationReward(null)} />}
       {practiceTask && <PracticeTaskModal key={practiceTask} type={practiceTask} game={game} onClose={() => setPracticeTask(null)} onComplete={completePracticeTask} />}
       {showShare && <ShareModal game={game} realmLabel={`${realmState.realm.name} ${realmState.layer} 层`} onClose={() => setShowShare(false)} setToast={setToast} />}
       {showShop && <ShopModal game={game} onClose={() => setShowShop(false)} onShare={() => { setShowShop(false); setShowShare(true) }} />}
@@ -612,7 +619,9 @@ function TopBar({ game, realmLabel, onShare, onSound, onMenu, onShop }: { game: 
 function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: GameState; onPractice: (type: DailyPracticeType) => void; onStory: () => void; onDestiny: () => void; onSoul: () => void }) {
   const order: DailyPracticeType[] = ['learn', 'act', 'observe']
   const completed = order.filter((id) => game.quests.find((quest) => quest.id === id)?.completed).length
-  const currentType = order.find((id) => !game.quests.find((quest) => quest.id === id)?.completed)
+  const dailyType = order.find((id) => !game.quests.find((quest) => quest.id === id)?.completed)
+  const firstJourneyStage = getFirstJourneyStage(game)
+  const inFirstJourney = firstJourneyStage !== 'complete'
   const scripture = SCRIPTURE_PRACTICES[dailyPracticeIndex(SCRIPTURE_PRACTICES.length)]
   const action = ACTION_PRACTICES[dailyPracticeIndex(ACTION_PRACTICES.length)]
   const wisdom = WISDOM_PRACTICES[dailyPracticeIndex(WISDOM_PRACTICES.length)]
@@ -625,7 +634,8 @@ function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: 
     observe: { step: '第三步 · 心境抉择', title: wisdom.title, detail: '在幻境里选一条路，再看它会把你带向哪里。', time: '约 2 分钟', reward: '愿力 +12', cta: '进入心境', ...PRACTICE_VISUALS.observe },
   }
 
-  const focus = currentType ? taskMeta[currentType] : null
+  const focus = dailyType ? taskMeta[dailyType] : null
+  const firstStep = firstJourneyStage === 'practice'
   return (
     <div className="screen practice-home">
       <section className="practice-hero" aria-label="今日修行">
@@ -634,29 +644,53 @@ function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: 
           <span><i />未来超我 · {game.agent.stage}</span>
           <button onClick={onSoul}>自主 {game.agent.autonomy}%<ChevronRight size={13} /></button>
         </div>
-        <blockquote>“别急着改变一生。今天，我只陪你走完眼前这一步。”</blockquote>
+        <blockquote>{inFirstJourney ? '“先让我看见什么在拖住你。剩下的路，我陪你走。”' : '“别急着改变一生。今天，我只陪你走完眼前这一步。”'}</blockquote>
       </section>
 
-      <section className="practice-focus-card">
+      <section className={`practice-focus-card ${inFirstJourney ? 'first-journey-card' : ''}`}>
         <div className="practice-card-head">
-          <div><span>今日修行</span><b>{completed} / 3</b></div>
-          <small>{completed === 3 ? `连续修行 ${game.streak} 天` : '一次只做一件事'}</small>
+          <div><span>{inFirstJourney ? '第一劫引导' : '今日修行'}</span><b>{inFirstJourney ? `${firstStep ? 1 : 2} / 3` : `${completed} / 3`}</b></div>
+          <small>{inFirstJourney ? '约 5 分钟走完第一轮' : completed === 3 ? `连续修行 ${game.streak} 天` : '一次只做一件事'}</small>
         </div>
-        <div className="practice-step-strip" aria-label="今日三步修行进度">
-          {order.map((id, index) => {
-            const done = Boolean(game.quests.find((quest) => quest.id === id)?.completed)
-            const active = id === currentType
-            return <div key={id} className={`${done ? 'done' : ''} ${active ? 'active' : ''}`}><span>{done ? <Check size={13} /> : index + 1}</span><b>{id === 'learn' ? '取经' : id === 'act' ? '行动' : '抉择'}</b></div>
-          })}
-        </div>
+        {inFirstJourney ? (
+          <div className="practice-step-strip first-journey-strip" aria-label="第一劫三步引导">
+            <div className={firstStep ? 'active' : 'done'}><span>{firstStep ? 1 : <Check size={13} />}</span><b>照见本心</b></div>
+            <div className={!firstStep ? 'active' : ''}><span>2</span><b>选择破法</b></div>
+            <div><span>3</span><b>神通归身</b></div>
+          </div>
+        ) : (
+          <div className="practice-step-strip" aria-label="今日三步修行进度">
+            {order.map((id, index) => {
+              const done = Boolean(game.quests.find((quest) => quest.id === id)?.completed)
+              const active = id === dailyType
+              return <div key={id} className={`${done ? 'done' : ''} ${active ? 'active' : ''}`}><span>{done ? <Check size={13} /> : index + 1}</span><b>{id === 'learn' ? '取经' : id === 'act' ? '行动' : '抉择'}</b></div>
+            })}
+          </div>
+        )}
 
-        {focus && currentType ? (
+        {firstJourneyStage === 'practice' ? (
+          <div className="practice-current first-journey-current">
+            <span className="practice-kicker">第一步 · 先让超我看懂你</span>
+            <div className="practice-title-line"><i className="practice-prop-icon"><img src={PRACTICE_VISUALS.observe.icon} alt="" /></i><div><h1>照见此刻的自己</h1><p>进入一个熟悉的处境，选出你真的会走的路。没有考试，也不用先学规则。</p></div></div>
+            <div className="practice-scene-peek"><img src={PRACTICE_VISUALS.observe.scene} alt="照见本心的心境场景" /><span><b>你现在只做一件事</b><small>看场景，选一条路，再听超我把后果讲明白。</small></span></div>
+            <div className="practice-reward-line"><span>约 2 分钟</span><i /><b>完成即开启第一劫</b><em>不扣命火</em></div>
+            <button className="game-button primary practice-main-cta" onClick={() => onPractice('observe')}>开始第一步<ArrowRight size={18} /></button>
+          </div>
+        ) : firstJourneyStage === 'tribulation' ? (
+          <div className="practice-current first-journey-current">
+            <span className="practice-kicker">第二步 · 镜门已经开启</span>
+            <div className="practice-title-line"><i className="practice-prop-icon"><img src={PRACTICE_VISUALS.act.icon} alt="" /></i><div><h1>第一劫：镜门来客</h1><p>你已经看见旧念。现在选一种破法，让未来的你替你先走进黑暗。</p></div></div>
+            <div className="practice-scene-peek first-tribulation-peek"><img src={STORY_SCENE_PATH} alt="超我在识海废墟等待入劫" /><span><b>此劫心魔 · 无明与自弃</b><small>只需做一个选择。完成后，第一门神通会投回你身上。</small></span></div>
+            <div className="practice-reward-line"><span>约 2 分钟</span><i /><b>本命神通「照心」</b><em>消耗 2 命火</em></div>
+            <button className="game-button primary practice-main-cta" onClick={onStory}>入劫 · 选择破法<ArrowRight size={18} /></button>
+          </div>
+        ) : focus && dailyType ? (
           <div className="practice-current">
             <span className="practice-kicker">{focus.step}</span>
             <div className="practice-title-line"><i className="practice-prop-icon"><img src={focus.icon} alt="" /></i><div><h1>{focus.title}</h1><p>{focus.detail}</p></div></div>
             <div className="practice-scene-peek"><img src={focus.scene} alt={`${focus.label}场景`} /><span><b>{focus.label}</b><small>进入场景后，只会出现一个明确动作</small></span></div>
             <div className="practice-reward-line"><span>{focus.time}</span><i /> <b>{focus.reward}</b><em>完成后自动进入下一步</em></div>
-            <button className="game-button primary practice-main-cta" onClick={() => onPractice(currentType)}>{focus.cta}<ArrowRight size={18} /></button>
+            <button className="game-button primary practice-main-cta" onClick={() => onPractice(dailyType)}>{focus.cta}<ArrowRight size={18} /></button>
           </div>
         ) : (
           <div className="practice-current practice-complete">
@@ -666,12 +700,12 @@ function PracticeHome({ game, onPractice, onStory, onDestiny, onSoul }: { game: 
           </div>
         )}
 
-        <div className="practice-mini-stats" aria-label="修行属性">
+        {inFirstJourney ? <div className="first-journey-note"><ShieldCheck size={14} /><span>走完首劫后，再展开每日修行与十八劫成长路线。</span></div> : <div className="practice-mini-stats" aria-label="修行属性">
           <span><small>境界</small><b>{realm.realm.name} · {realm.layer} 层</b></span>
           <span><small>愿力</small><b>{game.will}</b></span>
           <span><small>能力</small><b>{game.ability}</b></span>
           <button onClick={onDestiny}>看升级路线<ChevronRight size={13} /></button>
-        </div>
+        </div>}
       </section>
     </div>
   )
@@ -696,13 +730,14 @@ function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPra
   const action = ACTION_PRACTICES[dailyPracticeIndex(ACTION_PRACTICES.length)]
   const wisdom = WISDOM_PRACTICES[dailyPracticeIndex(WISDOM_PRACTICES.length)]
   const visual = PRACTICE_VISUALS[type]
+  const isFirstJourneyPractice = type === 'observe' && getFirstJourneyStage(game) === 'practice'
   const selectedChoice = wisdom.choices.find((choice) => choice.id === choiceId)
   const step = type === 'learn' ? 1 : type === 'act' ? 2 : 3
   const totalStages = type === 'learn' ? 3 : 2
   const gestureKey = type === 'learn' ? scripture.gesture : type === 'act' ? action.gesture : wisdom.gesture
   const finalStage = stage === totalStages - 1
   const alreadyDone = Boolean(game.quests.find((quest) => quest.id === type)?.completed)
-  const reward = type === 'learn' ? '修为 +28' : type === 'act' ? '能力 +10' : '愿力 +12'
+  const reward = isFirstJourneyPractice ? '解锁第一劫 · 愿力 +12' : type === 'learn' ? '修为 +28' : type === 'act' ? '能力 +10' : '愿力 +12'
 
   const next = () => setStage((current) => Math.min(totalStages - 1, current + 1))
   const finish = () => {
@@ -711,12 +746,12 @@ function PracticeTaskModal({ type, game, onClose, onComplete }: { type: DailyPra
   }
 
   return (
-    <div className="modal-layer practice-task-layer" role="dialog" aria-modal="true" aria-label={`今日修行第 ${step} 步`}>
+    <div className="modal-layer practice-task-layer" role="dialog" aria-modal="true" aria-label={isFirstJourneyPractice ? '第一劫引导第一步' : `今日修行第 ${step} 步`}>
       <div className="practice-task-modal modal-card">
         <button className="modal-close" onClick={onClose} aria-label="暂时退出"><X size={19} /></button>
         <header className="practice-task-head">
           <img src={visual.icon} alt="" />
-          <span>今日修行 · 第 {step} 步 / 共 3 步</span>
+          <span>{isFirstJourneyPractice ? '第一劫引导 · 第一步 / 共三步' : `今日修行 · 第 ${step} 步 / 共 3 步`}</span>
           <b>{visual.label}</b>
           <div><i style={{ width: `${((stage + 1) / totalStages) * 100}%` }} /></div>
         </header>
@@ -1799,6 +1834,35 @@ function StoryModal({ game, onClose, onAdvance }: { game: GameState; onClose: ()
           <button className="game-button primary" onClick={() => onAdvance(selectedChoice)} disabled={!unlocked || cleared}>{cleared ? <Check size={17} /> : unlocked ? <Zap size={17} /> : <LockKeyhole size={17} />}{cleared ? '此劫已写入命书' : unlocked ? `${choice.label} · 消耗 2 命火` : `还需 ${chapter.requirement - game.xp} 修为`}</button>
           <blockquote>超我：“{game.playerName}，我可以替你先走进黑暗，但最后握住我的人，只能是你。”</blockquote>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function TribulationRewardModal({ chapterIndex, choiceLabel, onClose }: { chapterIndex: number; choiceLabel: string; onClose: () => void }) {
+  const chapter = STORY_CHAPTERS[chapterIndex] || STORY_CHAPTERS[0]
+  const isFirst = chapter.index === 0
+  return (
+    <div className="modal-layer tribulation-reward-layer" role="dialog" aria-modal="true" aria-label={`${chapter.reward}已经归身`}>
+      <div className="tribulation-reward-modal modal-card">
+        <div className="reward-scene"><img src={STORY_SCENE_PATH} alt="超我将渡劫所得投回现实" /><i /><span>劫火已熄 · 镜门归明</span></div>
+        <div className="reward-seal"><Sparkles size={25} /><span>归</span></div>
+        <span className="story-code">{chapter.code} · 已渡</span>
+        <h2>{chapter.reward}</h2>
+        <p>你选择了“{choiceLabel}”。超我会记住这条路，以后给你的建议不再和所有人一样。</p>
+        <div className="reward-tally" aria-label="本次过劫奖励">
+          <span><b>+36</b><small>修为</small></span>
+          <span><b>+12</b><small>功德</small></span>
+          <span><b>-2</b><small>命火</small></span>
+        </div>
+        <div className="reward-route" aria-label="首轮修行完成进度">
+          <span><Check size={13} />照见本心</span><i />
+          <span><Check size={13} />选择破法</span><i />
+          <span className="active"><Sparkles size={13} />神通归身</span>
+        </div>
+        <blockquote>超我：“{isFirst ? '第一劫我替你走过了。下一次旧念回来时，记得你已经有了另一种走法。' : '这一劫留下的不是答案，而是你下次还能再走一次的路。'}”</blockquote>
+        <button className="game-button primary" onClick={onClose}>{isFirst ? '收下神通 · 回到灵台' : '收下神通'}<ArrowRight size={17} /></button>
+        {isFirst && <small className="reward-unlock"><ShieldCheck size={13} />每日修行与十八劫成长路线现已展开</small>}
       </div>
     </div>
   )

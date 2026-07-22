@@ -1,4 +1,5 @@
 import { DAILY_QUESTS, REALMS, SEED_ARTS, STORY_CHAPTERS } from './gameData'
+import { getFirstJourneyStage } from './firstJourney.mjs'
 import { SaveStore } from './saveSystem.mjs'
 import { sanitizeGameState } from './gameStateSchema.mjs'
 import type { AgentIdentity, AgentInitiative, CultivationArt, GameState, KnowledgeType, Projection, TabId } from './types'
@@ -402,6 +403,36 @@ export function getCultivationDirective(state: GameState): CultivationDirective 
   const allCleared = state.clearedStoryChapters.length >= STORY_CHAPTERS.length
   const pendingProjection = state.projections.find((item) => !item.completed)
   const questDone = (id: string) => Boolean(state.quests.find((item) => item.id === id)?.completed)
+  const firstJourneyStage = getFirstJourneyStage(state)
+
+  if (firstJourneyStage === 'practice') {
+    return {
+      id: 'first-journey-practice',
+      kicker: '第一劫 · 第一步 / 共三步',
+      title: '先照见此刻的自己',
+      detail: '做一次两分钟心境选择。不是考试，只是让超我先看懂什么正在拖住你。',
+      cta: '开始第一步',
+      reward: '解锁第一劫 · 愿力 +12',
+      minutes: 2,
+      target: 'quest',
+      questId: 'observe',
+      progress: '照见自己 → 选择破法 → 神通归身',
+    }
+  }
+
+  if (firstJourneyStage === 'tribulation') {
+    return {
+      id: 'first-journey-tribulation',
+      kicker: '第一劫 · 第二步 / 共三步',
+      title: '进入「镜门来客」',
+      detail: '你已经看见旧念。现在选一种破法，让未来的你替你先走进黑暗。',
+      cta: '入劫 · 选择破法',
+      reward: `${STORY_CHAPTERS[0].reward} · 消耗 2 命火`,
+      minutes: 2,
+      target: 'story',
+      progress: '完成后，第一门神通归身',
+    }
+  }
 
   if (!chapterCleared && state.xp >= chapter.requirement) {
     return {
