@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { realpathSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -205,7 +206,16 @@ export function createSuperegoServer(options = {}) {
   })
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+export function isMainModule(entryPath = process.argv[1], modulePath = fileURLToPath(import.meta.url)) {
+  if (!entryPath) return false
+  try {
+    return realpathSync(resolve(entryPath)) === realpathSync(resolve(modulePath))
+  } catch {
+    return false
+  }
+}
+
+if (isMainModule()) {
   const server = createSuperegoServer()
   server.listen(PORT, HOST, () => {
     console.log(`Superego AI is listening on http://${HOST}:${PORT}`)
