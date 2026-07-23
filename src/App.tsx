@@ -1853,30 +1853,108 @@ function BreakthroughGuidePanel({ guide, onRoute }: { guide: BreakthroughGuide; 
     act: PRACTICE_VISUALS.act.icon,
     observe: PRACTICE_VISUALS.observe.icon,
   }
+  const routePresentation: Record<string, { mark: string; action: string; discipline: string }> = {
+    learn: { mark: '经', action: '入炉炼法', discipline: '经修' },
+    act: { mark: '行', action: '接令践行', discipline: '行修' },
+    observe: { mark: '心', action: '入境观心', discipline: '心修' },
+    share: { mark: '愿', action: '结伴同行', discipline: '愿修' },
+  }
+  const surplus = Math.max(0, guide.projected - guide.deficit)
   return <section className="breakthrough-guide" aria-label="破境修为获取路线">
     <header className="breakthrough-lock-head">
-      <span className="breakthrough-lock-seal"><LockKeyhole size={20} /></span>
-      <div><small>这一劫还未锁死，只差一段修行</small><h3>当前 {guide.current} / {guide.requirement} 修为</h3></div>
-      <em>尚缺 {guide.deficit}</em>
+      <span className="breakthrough-lock-seal"><LockKeyhole size={18} /><i>命关</i></span>
+      <div className="breakthrough-lock-copy">
+        <small><Sparkles size={11} />破境法阵 · 超我推演</small>
+        <h3>劫门未开，只差最后一段修行</h3>
+        <p>不必乱找任务，下方每次修行都会推进破境。</p>
+      </div>
+      <span className="breakthrough-deficit">
+        <small>尚缺</small>
+        <b>{guide.deficit}</b>
+        <em>修为</em>
+      </span>
     </header>
-    <div className="breakthrough-progress"><i style={{ width: `${guide.percent}%` }} /><span>{guide.percent}%</span></div>
-    <div className="breakthrough-plan">
-      <span>为你排好的最短路线</span>
-      <div>{guide.recommended.map((step, index) => <span key={`${step.action}-${index}`}><b>{index + 1}</b>{step.label}<em>+{step.reward}</em>{index < guide.recommended.length - 1 && <ArrowRight size={13} />}</span>)}</div>
-      <small>完成后预计获得 {guide.projected} 修为，足够开启本劫；你也可以改走下面任意一路。</small>
+
+    <div className="breakthrough-meridian" aria-label={`当前修为 ${guide.current}，目标 ${guide.requirement}`}>
+      <span><small>当前修为</small><b>{guide.current}</b></span>
+      <div className="breakthrough-progress">
+        <i style={{ width: `${guide.percent}%` }} />
+        <span style={{ left: `clamp(8px, ${guide.percent}%, calc(100% - 8px))` }} />
+      </div>
+      <span><small>劫门门槛</small><b>{guide.requirement}</b></span>
     </div>
+
+    <div className="breakthrough-plan">
+      <header>
+        <span><Sparkles size={14} />超我已推演出最短法门</span>
+        <b>{guide.recommended.length} 步破境</b>
+      </header>
+      <div className="breakthrough-plan-path">
+        {guide.recommended.map((step, index) => <button type="button" key={`${step.action}-${index}`} onClick={() => onRoute(step.action)}>
+          <span className="breakthrough-plan-seal">{index + 1}</span>
+          <span><small>第 {index + 1} 式</small><b>{step.label}</b></span>
+          <em>{step.reward > 0 ? `+${step.reward} 修为` : '补足命火'}</em>
+          {index < guide.recommended.length - 1 && <i className="breakthrough-plan-link"><ArrowRight size={13} /></i>}
+        </button>)}
+      </div>
+      <footer><ShieldCheck size={14} /><span>预计共得 <b>+{guide.projected}</b> 修为{surplus > 0 ? `，越过门槛 ${surplus} 点` : '，正好叩开劫门'}。</span></footer>
+    </div>
+
+    <div className="breakthrough-route-heading">
+      <span>四门修法</span>
+      <i />
+      <small>任选修法 · 所得皆归于你</small>
+    </div>
+
     <div className="breakthrough-route-grid">
       {guide.routes.map((route) => {
-        const recommended = guide.recommended.some((step) => step.action === route.action)
-        return <button key={route.id} aria-label={`${route.title}：${route.label}，${route.status}`} className={`${recommended ? 'recommended' : ''} ${route.ready ? '' : 'unavailable'}`} disabled={!route.ready} onClick={() => onRoute(route.action)}>
-          <i className="breakthrough-route-icon">{route.id === 'share' ? <Users size={25} /> : <img src={routeIcons[route.id]} alt="" />}</i>
-          <span><small>{route.title}{recommended && <em>推荐</em>}</small><b>{route.label}</b><p>{route.detail}</p></span>
-          <strong>{route.status}<ChevronRight size={15} /></strong>
+        const recommendedIndex = guide.recommended.findIndex((step) => step.action === route.action)
+        const recommended = recommendedIndex >= 0
+        const completed = !route.ready && (route.status.includes('完成') || route.status.includes('领取') || route.status.includes('结算'))
+        const blocked = !route.ready && !completed
+        const presentation = routePresentation[route.id]
+        return <button
+          type="button"
+          key={route.id}
+          aria-label={`${route.title}：${route.label}，${route.status}`}
+          className={`breakthrough-route route-${route.id} ${recommended ? 'recommended' : ''} ${completed ? 'completed' : ''} ${blocked ? 'blocked' : ''}`}
+          disabled={!route.ready}
+          onClick={() => onRoute(route.action)}
+        >
+          <span className="breakthrough-route-rail">
+            <i className="breakthrough-route-icon">
+              {route.id === 'share' ? <Users size={27} /> : <img src={routeIcons[route.id]} alt="" />}
+              <small>{presentation.mark}</small>
+            </i>
+            {recommended && <b className="breakthrough-route-order">第 {recommendedIndex + 1} 步</b>}
+          </span>
+          <span className="breakthrough-route-copy">
+            <span className="breakthrough-route-eyebrow">
+              <small>{presentation.discipline} · {route.title}</small>
+              {recommended && <em>超我荐</em>}
+              {completed && <em className="done">今日已修</em>}
+            </span>
+            <b className="breakthrough-route-title">{route.label}</b>
+            <p>{route.detail}</p>
+            <span className="breakthrough-route-meta">
+              <small>{route.minutes > 0 ? `约 ${route.minutes} 分钟` : '无需命火'}</small>
+              <strong>{route.status}</strong>
+            </span>
+          </span>
+          <span className="breakthrough-route-action">
+            {completed ? <Check size={15} /> : blocked ? <LockKeyhole size={14} /> : <ChevronRight size={16} />}
+            {completed ? '功课已记' : blocked ? route.status : presentation.action}
+          </span>
+          <i className="breakthrough-route-corner" />
         </button>
       })}
     </div>
-    <button className="breakthrough-support" onClick={() => onRoute('shop')}><Flame size={18} /><span><b>命火不够开炉或入劫？</b><small>可等自然恢复、完成现实投影，或查看补给；命火不会直接购买修为。</small></span><ChevronRight size={17} /></button>
-    <p className="breakthrough-trust"><ShieldCheck size={13} />每日分享修行可得 +10 修为；真实好友邀请与付费奖励仍需服务端验签，未开放前不会虚假到账。</p>
+    <button type="button" className="breakthrough-support" onClick={() => onRoute('shop')}>
+      <span className="breakthrough-support-seal"><Flame size={18} /></span>
+      <span><small>命火补给</small><b>命火不够开炉或入劫？</b><p>自然恢复、完成现实投影，或进入补给阁查看。</p></span>
+      <em>查看法门<ChevronRight size={15} /></em>
+    </button>
+    <p className="breakthrough-trust"><ShieldCheck size={13} /><span>每日分享修行可得 <b>+10 修为</b>；好友与付费奖励待服务端验签后开放，不会虚假到账。</span></p>
   </section>
 }
 

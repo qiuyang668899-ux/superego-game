@@ -33,7 +33,9 @@ test('completed daily tasks fall back to repeatable canon cultivation', () => {
     shareRewardDate: '2026-07-22',
   }), 320, '2026-07-22')
   assert.equal(guide.routes.find((route) => route.id === 'learn').action, 'library')
+  assert.equal(guide.routes.find((route) => route.id === 'learn').label, '再炼一卷')
   assert.deepEqual(guide.recommended.map((step) => step.action), ['library', 'library'])
+  assert.deepEqual(guide.recommended.map((step) => step.label), ['再炼一卷', '万卷灵炉再炼一卷'])
   assert.equal(guide.projected, 56)
 })
 

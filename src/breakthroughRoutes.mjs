@@ -37,14 +37,12 @@ export function getBreakthroughGuide(state, requirement, dateKey = getLocalDateK
   const observeDone = questDone(state, 'observe')
   const pendingProjection = state.projections?.find((projection) => !projection.completed)
   const shareClaimed = state.shareRewardDate === dateKey
-  const libraryRuns = Math.max(1, Math.ceil(deficit / BREAKTHROUGH_REWARDS.learn))
-
   const routes = [
     {
       id: 'learn',
       action: learnDone ? 'library' : 'learn',
       title: learnDone ? '万卷灵炉' : '今日经修',
-      label: learnDone ? `再炼 ${libraryRuns} 卷` : '读一段经文',
+      label: learnDone ? '再炼一卷' : '读一段经文',
       detail: learnDone
         ? `每炼成一卷 +${BREAKTHROUGH_REWARDS.learn} 修为，原典与译文永久免费。`
         : '读懂一句人话，投入灵炉，完成今天的第一修。',
